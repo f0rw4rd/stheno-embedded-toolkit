@@ -1,0 +1,118 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build all binaries
+        run: |
+          echo "Building all tools for all architectures..."
+          ./build
+
+      - name: Create architecture-specific zip files
+        run: |
+          cd output
+          for arch in */; do
+            if [ -d "$arch" ]; then
+              arch_name="${arch%/}"
+              echo "Creating zip for $arch_name..."
+              zip -r "../stheno-toolkit-${arch_name}.zip" "$arch_name"
+            fi
+          done
+          cd ..
+          ls -la *.zip
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          echo "## Stheno Embedded Toolkit Release" > release_notes.md
+          echo "" >> release_notes.md
+          echo "### Included Tools" >> release_notes.md
+          echo "- **strace** - System call tracer" >> release_notes.md
+          echo "- **busybox** - Multi-call binary with Unix utilities" >> release_notes.md
+          echo "- **bash** - Bourne Again Shell" >> release_notes.md
+          echo "- **socat/socat-ssl** - Socket relay tool" >> release_notes.md
+          echo "- **ncat/ncat-ssl** - Network utility" >> release_notes.md
+          echo "- **tcpdump** - Network packet analyzer" >> release_notes.md
+          echo "- **gdbserver** - Remote debugging server" >> release_notes.md
+          echo "- **gdb** - GNU debugger" >> release_notes.md
+          echo "- **nmap** - Network exploration tool" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Supported Architectures (32 total)" >> release_notes.md
+          echo "Each zip file contains statically-linked binaries for a specific architecture:" >> release_notes.md
+          echo "" >> release_notes.md
+          cd output
+          for arch in */; do
+            if [ -d "$arch" ]; then
+              echo "- \`${arch%/}\`" >> ../release_notes.md
+            fi
+          done
+          cd ..
+          echo "" >> release_notes.md
+          echo "### Usage" >> release_notes.md
+          echo "1. Download the zip file for your target architecture" >> release_notes.md
+          echo "2. Extract to your embedded system" >> release_notes.md
+          echo "3. All binaries are statically linked with no runtime dependencies" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Build Information" >> release_notes.md
+          echo "- Built with musl libc for maximum portability" >> release_notes.md
+          echo "- Optimized for size (-Os)" >> release_notes.md
+          echo "- Stripped symbols for smaller binaries" >> release_notes.md
+
+      - name: Determine release tag
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.release_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_tag.outputs.tag }}
+          release_name: Stheno Embedded Toolkit ${{ steps.get_tag.outputs.tag }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Assets
+        run: |
+          for zip in stheno-toolkit-*.zip; do
+            echo "Uploading $zip..."
+            gh release upload ${{ steps.get_tag.outputs.tag }} "$zip" \
+              --clobber \
+              --repo ${{ github.repository }}
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SHA256 checksums
+        run: |
+          sha256sum stheno-toolkit-*.zip > checksums.sha256
+          gh release upload ${{ steps.get_tag.outputs.tag }} checksums.sha256 \
+            --clobber \
+            --repo ${{ github.repository }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

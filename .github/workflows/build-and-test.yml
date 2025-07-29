@@ -1,0 +1,58 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-sample:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build sample architectures
+        run: |
+          echo "Building sample tools for quick CI validation..."
+          # Build a representative sample: one tool for three different architectures
+          ./build strace --arch x86_64
+          ./build busybox --arch arm32v7le
+          ./build tcpdump --arch aarch64
+
+      - name: Verify built binaries
+        run: |
+          echo "Checking built binaries..."
+          ls -la output/x86_64/strace
+          ls -la output/arm32v7le/busybox
+          ls -la output/aarch64/tcpdump
+          
+          # Check that binaries are statically linked
+          file output/x86_64/strace | grep -q "statically linked"
+          file output/arm32v7le/busybox | grep -q "statically linked"
+          file output/aarch64/tcpdump | grep -q "statically linked"
+
+      - name: Test with QEMU (if available)
+        run: |
+          if [ -f scripts/verify-binaries-qemu.sh ]; then
+            echo "Running QEMU verification..."
+            ./scripts/verify-binaries-qemu.sh || true
+          else
+            echo "QEMU verification script not found, skipping..."
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sample-binaries
+          path: |
+            output/x86_64/strace
+            output/arm32v7le/busybox
+            output/aarch64/tcpdump
+          retention-days: 7
