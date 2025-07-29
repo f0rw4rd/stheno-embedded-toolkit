@@ -91,28 +91,23 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create Release and Upload Assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_tag.outputs.tag }}
-          release_name: Stheno Embedded Toolkit ${{ steps.get_tag.outputs.tag }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Assets
         run: |
+          # Create the release using gh CLI
+          gh release create ${{ steps.get_tag.outputs.tag }} \
+            --title "Stheno Embedded Toolkit ${{ steps.get_tag.outputs.tag }}" \
+            --notes-file release_notes.md \
+            --repo ${{ github.repository }}
+          
+          # Upload all zip files
           for zip in stheno-toolkit-*.zip; do
             echo "Uploading $zip..."
             gh release upload ${{ steps.get_tag.outputs.tag }} "$zip" \
               --clobber \
               --repo ${{ github.repository }}
           done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate SHA256 checksums
         run: |
