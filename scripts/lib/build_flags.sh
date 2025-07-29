@@ -33,8 +33,6 @@ get_compile_flags() {
     # Security hardening (balanced for embedded)
     base_flags="$base_flags -D_FORTIFY_SOURCE=1 -fstack-protector-strong"
     
-    # Link-time optimization (if supported)
-    base_flags="$base_flags -flto=auto -fuse-linker-plugin"
     
     # Strip unnecessary symbols
     base_flags="$base_flags -fvisibility=hidden"
