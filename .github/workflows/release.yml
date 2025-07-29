@@ -21,11 +21,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build all binaries
-        run: |
-          echo "Building all tools for all architectures..."
-          ./build
-
       - name: Create architecture-specific zip files
         run: |
           cd output
@@ -33,11 +28,17 @@ jobs:
             if [ -d "$arch" ]; then
               arch_name="${arch%/}"
               echo "Creating zip for $arch_name..."
-              zip -r "../stheno-toolkit-${arch_name}.zip" "$arch_name"
+              # Check if the directory has any files
+              if [ "$(ls -A "$arch")" ]; then
+                zip -r "../stheno-toolkit-${arch_name}.zip" "$arch_name"
+              else
+                echo "Skipping empty directory: $arch_name"
+              fi
             fi
           done
           cd ..
-          ls -la *.zip
+          echo "Created the following zip files:"
+          ls -la stheno-toolkit-*.zip 2>/dev/null || echo "No zip files created!"
 
       - name: Generate release notes
         id: release_notes
