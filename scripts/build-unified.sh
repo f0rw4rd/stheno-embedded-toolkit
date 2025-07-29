@@ -150,9 +150,6 @@ do_build() {
     
     local log_file=""
     if [ "$LOG_ENABLED" = true ]; then
-        # Remove old logs for this tool/arch combination
-        rm -f /build/logs/build-${tool}-${arch}-*.log
-        
         log_file="/build/logs/build-${tool}-${arch}-$(date +%Y%m%d-%H%M%S).log"
         echo "[$arch] Building $tool (log: $log_file)..."
         
@@ -172,6 +169,12 @@ do_build() {
     local result=$?
     if [ $result -eq 0 ]; then
         echo "[$arch] ✓ $tool built successfully"
+        # Remove logs for successful builds
+        if [ "$LOG_ENABLED" = true ] && [ -n "$log_file" ]; then
+            rm -f "$log_file"
+            # Also remove any old logs for this successful tool/arch combination
+            rm -f /build/logs/build-${tool}-${arch}-*.log
+        fi
     else
         echo "[$arch] ✗ $tool build failed"
         [ -n "$log_file" ] && echo "[$arch] Check log: $log_file"
