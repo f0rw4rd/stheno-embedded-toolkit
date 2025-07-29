@@ -30,10 +30,11 @@ build_gdb_simple() {
     
     # Use centralized build flags
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
+    local cxxflags=$(get_cxx_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
     export CFLAGS="$cflags"
-    export CXXFLAGS="$cflags"
+    export CXXFLAGS="$cxxflags"
     export LDFLAGS="$ldflags"
     
     # Configure with static options

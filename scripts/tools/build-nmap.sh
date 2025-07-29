@@ -53,10 +53,12 @@ build_nmap() {
     
     # Configure nmap with centralized flags
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
+    local cxxflags=$(get_cxx_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
     # Add include and lib paths for dependencies
     cflags="$cflags -I$pcap_dir/include -I$ssl_dir/include -I$zlib_dir/include"
+    cxxflags="$cxxflags -I$pcap_dir/include -I$ssl_dir/include -I$zlib_dir/include"
     ldflags="$ldflags -L$pcap_dir/lib -L$ssl_dir/lib -L$zlib_dir/lib"
     
     ./configure \
@@ -72,7 +74,7 @@ build_nmap() {
         CC="$CC" \
         CXX="$CXX" \
         CFLAGS="$cflags" \
-        CXXFLAGS="$cflags" \
+        CXXFLAGS="$cxxflags" \
         LDFLAGS="$ldflags" \
         LIBS="-lpcap -lssl -lcrypto -lz -ldl" || {
         echo "[nmap] Configure failed for $arch"
