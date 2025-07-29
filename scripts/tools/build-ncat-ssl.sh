@@ -57,8 +57,9 @@ build_ncat_ssl() {
     cflags="$cflags -I$ssl_dir/include"
     ldflags="$ldflags -L$ssl_dir/lib"
     
-    CFLAGS="$cflags" \
-    LDFLAGS="$ldflags" \
+    export CFLAGS="$cflags"
+    export LDFLAGS="$ldflags"
+
     ./configure \
         --host=$HOST \
         --with-openssl=$ssl_dir \

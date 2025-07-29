@@ -40,8 +40,10 @@ build_strace() {
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
-    CFLAGS="$cflags" \
-    LDFLAGS="$ldflags" \
+    # Export as environment variables to avoid potential "Argument list too long" error
+    export CFLAGS="$cflags"
+    export LDFLAGS="$ldflags"
+    
     ./configure \
         --host=$HOST \
         --enable-static \

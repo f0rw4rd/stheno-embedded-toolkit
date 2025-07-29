@@ -46,8 +46,10 @@ build_nmap() {
     mkdir -p "$build_dir"
     cd "$build_dir"
     
-    # Download and extract nmap
+    # Download source if needed
     download_source "nmap" "$NMAP_VERSION" "$NMAP_URL" || return 1
+    
+    # Extract nmap into architecture-specific build directory
     tar xf /build/sources/nmap-${NMAP_VERSION}.tar.bz2
     cd nmap-${NMAP_VERSION}
     
@@ -61,6 +63,25 @@ build_nmap() {
     cxxflags="$cxxflags -I$pcap_dir/include -I$ssl_dir/include -I$zlib_dir/include"
     ldflags="$ldflags -L$pcap_dir/lib -L$ssl_dir/lib -L$zlib_dir/lib"
     
+    # Export as environment variables to avoid "Argument list too long" error
+    export CC="$CC"
+    export CXX="$CXX"
+    export CFLAGS="$cflags"
+    export CXXFLAGS="$cxxflags"
+    export LDFLAGS="$ldflags"
+    export LIBS="-lpcap -lssl -lcrypto -lz -ldl"
+    
+    # Create subdirectories that libpcre configure might need
+    mkdir -p libpcre/sub
+    
+    # Work around libpcre configure issues with cross-compilation
+    export ac_cv_func_strerror=yes
+    export ac_cv_prog_cc_g=yes
+    
+    # Prevent autotools from regenerating files during cross-compilation
+    touch libpcre/aclocal.m4 libpcre/Makefile.in libpcre/configure
+    find libpcre -name "*.in" -exec touch {} \;
+    
     ./configure \
         --host=$HOST \
         --without-ndiff \
@@ -70,21 +91,24 @@ build_nmap() {
         --without-nping \
         --with-libpcap="$pcap_dir" \
         --with-openssl="$ssl_dir" \
-        --with-libz="$zlib_dir" \
-        CC="$CC" \
-        CXX="$CXX" \
-        CFLAGS="$cflags" \
-        CXXFLAGS="$cxxflags" \
-        LDFLAGS="$ldflags" \
-        LIBS="-lpcap -lssl -lcrypto -lz -ldl" || {
+        --with-libz="$zlib_dir" || {
         echo "[nmap] Configure failed for $arch"
         cd /
         rm -rf "$build_dir"
         return 1
     }
     
-    # Build nmap
-    make -j$(nproc) || {
+    # Fix libpcre Makefile to prevent reconfigure during build
+    if [ -f libpcre/Makefile ]; then
+        sed -i 's/^Makefile:.*/Makefile:/' libpcre/Makefile
+        sed -i 's/^config.status:.*/config.status:/' libpcre/Makefile
+    fi
+    
+    # Clean any previous build artifacts (shouldn't be needed with isolated builds)
+    # make clean || true
+    
+    # Build nmap with verbose output
+    make V=1 -j$(nproc) || {
         echo "[nmap] Build failed for $arch"
         cd /
         rm -rf "$build_dir"
