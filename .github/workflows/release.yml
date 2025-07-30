@@ -84,38 +84,10 @@ jobs:
           fi
           echo "" >> release_notes.md
           
-          echo "### Included Tools" >> release_notes.md
-          echo "- **strace** - System call tracer" >> release_notes.md
-          echo "- **busybox** - Multi-call binary with Unix utilities" >> release_notes.md
-          echo "- **bash** - Bourne Again Shell" >> release_notes.md
-          echo "- **socat/socat-ssl** - Socket relay tool" >> release_notes.md
-          echo "- **ncat/ncat-ssl** - Network utility" >> release_notes.md
-          echo "- **tcpdump** - Network packet analyzer" >> release_notes.md
-          echo "- **gdbserver** - Remote debugging server" >> release_notes.md
-          echo "- **gdb** - GNU debugger" >> release_notes.md
-          echo "- **nmap** - Network exploration tool" >> release_notes.md
-          echo "- **dropbear** - Lightweight SSH server/client (includes dbclient, dropbearkey, scp)" >> release_notes.md
+          echo "### Download" >> release_notes.md
+          echo "Download the zip file for your target architecture. All binaries are statically linked with musl libc." >> release_notes.md
           echo "" >> release_notes.md
-          echo "### Supported Architectures (36 total)" >> release_notes.md
-          echo "Each zip file contains statically-linked binaries for a specific architecture:" >> release_notes.md
-          echo "" >> release_notes.md
-          cd output
-          for arch in */; do
-            if [ -d "$arch" ]; then
-              echo "- \`${arch%/}\`" >> ../release_notes.md
-            fi
-          done
-          cd ..
-          echo "" >> release_notes.md
-          echo "### Usage" >> release_notes.md
-          echo "1. Download the zip file for your target architecture" >> release_notes.md
-          echo "2. Extract to your embedded system" >> release_notes.md
-          echo "3. All binaries are statically linked with no runtime dependencies" >> release_notes.md
-          echo "" >> release_notes.md
-          echo "### Build Information" >> release_notes.md
-          echo "- Built with musl libc for maximum portability" >> release_notes.md
-          echo "- Optimized for size (-Os)" >> release_notes.md
-          echo "- Stripped symbols for smaller binaries" >> release_notes.md
+          echo "For a complete list of tools and supported architectures, see the [README](https://github.com/${{ github.repository }}/blob/main/README.md)." >> release_notes.md
 
       - name: Create Release and Upload Assets
         env:
