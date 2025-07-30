@@ -110,21 +110,6 @@ The `output/` folder contains all the ready-to-use static binaries organized by 
 
 All binaries are statically linked with no runtime dependencies.
 
-## Current Status
-
-Successfully built **216 static binaries** across 32 architectures:
-- **bash**: 29/32 architectures (90.6%)
-- **busybox**: 28/32 architectures (87.5%)
-- **strace**: 28/32 architectures (87.5%)
-- **socat**: 28/32 architectures (87.5%)
-- **socat-ssl**: 28/32 architectures (87.5%)
-- **ncat**: 28/32 architectures (87.5%)
-- **ncat-ssl**: 27/32 architectures (84.4%)
-- **tcpdump**: 28/32 architectures (87.5%)
-- **gdbserver**: 26/32 architectures (81.2%)
-- **gdb**: 7/32 architectures (21.9%)
-- **nmap**: 1/32 architectures (x86_64 only)
-
 ## Quick Status Check
 
 ```bash
