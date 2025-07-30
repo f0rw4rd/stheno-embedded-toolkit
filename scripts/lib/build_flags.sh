@@ -5,7 +5,7 @@
 get_arch_family() {
     local arch=$1
     case "$arch" in
-        arm*|aarch64) echo "arm" ;;
+        arm*|aarch64*) echo "arm" ;;
         x86_64|i*86*) echo "x86" ;;
         mips*) echo "mips" ;;
         ppc*|power*) echo "ppc" ;;
@@ -14,6 +14,7 @@ get_arch_family() {
         microblaze*) echo "microblaze" ;;
         or1k) echo "or1k" ;;
         m68k) echo "m68k" ;;
+        riscv*) echo "riscv" ;;
         *) echo "generic" ;;
     esac
 }
@@ -152,6 +153,22 @@ get_compile_flags() {
             ;;
         or1k)
             base_flags="$base_flags -mhard-mul -mhard-div"
+            ;;
+        riscv32)
+            base_flags="$base_flags -march=rv32gc -mabi=ilp32d"
+            base_flags="$base_flags -mcmodel=medlow"
+            ;;
+        riscv64)
+            base_flags="$base_flags -march=rv64gc -mabi=lp64d"
+            base_flags="$base_flags -mcmodel=medlow"
+            ;;
+        aarch64_be)
+            base_flags="$base_flags -march=armv8-a -mtune=cortex-a53"
+            base_flags="$base_flags -mbig-endian -fomit-frame-pointer"
+            ;;
+        mips64)
+            base_flags="$base_flags -march=mips64r2 -mtune=octeon -mabi=64"
+            base_flags="$base_flags -EB -mno-shared -mno-plt"
             ;;
     esac
     

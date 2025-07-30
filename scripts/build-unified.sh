@@ -110,6 +110,8 @@ ALL_ARCHS=(
     sh2 sh2eb sh4 sh4eb
     # Others
     microblaze microblazeel or1k m68k s390x
+    # RISC-V
+    riscv32 riscv64
 )
 
 # All tools

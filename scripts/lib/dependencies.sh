@@ -322,7 +322,7 @@ build_ncurses_cached() {
         --with-fallbacks=linux,xterm,xterm-256color \
         CC="$CC" \
         CFLAGS="$CFLAGS" \
-        LDFLAGS="$LDFLAGS" || {
+        LDFLAGS="$LDFLAGS" >/dev/null 2>&1 || {
         echo "ncurses configure failed for $arch" >&2
         cd /
         rm -rf "$build_dir"
@@ -330,7 +330,7 @@ build_ncurses_cached() {
     }
     
     # Build ncurses
-    make -j$(nproc) || {
+    make -j$(nproc) >/dev/null 2>&1 || {
         echo "ncurses build failed for $arch" >&2
         cd /
         rm -rf "$build_dir"
@@ -338,7 +338,7 @@ build_ncurses_cached() {
     }
     
     # Install to cache
-    make install || {
+    make install >/dev/null 2>&1 || {
         echo "ncurses install failed for $arch" >&2
         cd /
         rm -rf "$build_dir"
@@ -405,7 +405,7 @@ build_readline_cached() {
         --with-curses \
         CC="$CC" \
         CFLAGS="$CFLAGS -I$ncurses_dir/include" \
-        LDFLAGS="$LDFLAGS -L$ncurses_dir/lib" || {
+        LDFLAGS="$LDFLAGS -L$ncurses_dir/lib" >/dev/null 2>&1 || {
         echo "readline configure failed for $arch" >&2
         cd /
         rm -rf "$build_dir"
@@ -413,7 +413,7 @@ build_readline_cached() {
     }
     
     # Build readline
-    make -j$(nproc) || {
+    make -j$(nproc) >/dev/null 2>&1 || {
         echo "readline build failed for $arch" >&2
         cd /
         rm -rf "$build_dir"
@@ -421,7 +421,7 @@ build_readline_cached() {
     }
     
     # Install to cache
-    make install || {
+    make install >/dev/null 2>&1 || {
         echo "readline install failed for $arch" >&2
         cd /
         rm -rf "$build_dir"

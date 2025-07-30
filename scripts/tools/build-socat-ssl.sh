@@ -44,6 +44,11 @@ build_socat_ssl() {
         return 1
     }
     
+    # Trim any whitespace/newlines from the directory paths
+    ssl_dir=$(echo "$ssl_dir" | tr -d '\n' | xargs)
+    readline_dir=$(echo "$readline_dir" | tr -d '\n' | xargs)
+    ncurses_dir=$(echo "$ncurses_dir" | tr -d '\n' | xargs)
+    
     # Download source
     download_source "socat" "$SOCAT_VERSION" "$SOCAT_URL" || return 1
     
@@ -84,7 +89,7 @@ sc_cv_type_stat64=yes
 EOF
 
     # Adjust for 64-bit architectures
-    if [[ "$arch" == "x86_64" || "$arch" == "aarch64" || "$arch" == *"64"* ]]; then
+    if [[ "$arch" == "x86_64" || "$arch" == "aarch64" || "$arch" == "riscv64" || "$arch" == "mips64"* || "$arch" == "ppc64"* || "$arch" == "powerpc64"* || "$arch" == "s390x" ]]; then
         sed -i 's/ac_cv_sizeof_long=4/ac_cv_sizeof_long=8/' config.cache
         sed -i 's/ac_cv_sizeof_size_t=4/ac_cv_sizeof_size_t=8/' config.cache
         sed -i 's/ac_cv_sizeof_time_t=4/ac_cv_sizeof_time_t=8/' config.cache

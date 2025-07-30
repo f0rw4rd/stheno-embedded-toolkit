@@ -52,6 +52,8 @@ declare -A QEMU_MAP=(
     ["or1k"]="qemu-or1k-static"
     ["m68k"]="qemu-m68k-static"
     ["s390x"]="qemu-s390x-static"
+    ["riscv32"]="qemu-riscv32-static"
+    ["riscv64"]="qemu-riscv64-static"
 )
 
 # Test commands for each tool
