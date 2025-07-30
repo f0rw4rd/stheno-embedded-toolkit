@@ -54,6 +54,8 @@ declare -A QEMU_MAP=(
     ["s390x"]="qemu-s390x-static"
     ["riscv32"]="qemu-riscv32-static"
     ["riscv64"]="qemu-riscv64-static"
+    ["aarch64_be"]="qemu-aarch64_be-static"
+    ["mips64"]="qemu-mips64-static"
 )
 
 # Test commands for each tool

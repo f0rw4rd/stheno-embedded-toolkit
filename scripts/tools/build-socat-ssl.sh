@@ -89,7 +89,7 @@ sc_cv_type_stat64=yes
 EOF
 
     # Adjust for 64-bit architectures
-    if [[ "$arch" == "x86_64" || "$arch" == "aarch64" || "$arch" == "riscv64" || "$arch" == "mips64"* || "$arch" == "ppc64"* || "$arch" == "powerpc64"* || "$arch" == "s390x" ]]; then
+    if [[ "$arch" == "x86_64" || "$arch" == "aarch64" || "$arch" == "aarch64_be" || "$arch" == "riscv64" || "$arch" == "mips64" || "$arch" == "mips64"* || "$arch" == "ppc64"* || "$arch" == "powerpc64"* || "$arch" == "s390x" ]]; then
         sed -i 's/ac_cv_sizeof_long=4/ac_cv_sizeof_long=8/' config.cache
         sed -i 's/ac_cv_sizeof_size_t=4/ac_cv_sizeof_size_t=8/' config.cache
         sed -i 's/ac_cv_sizeof_time_t=4/ac_cv_sizeof_time_t=8/' config.cache

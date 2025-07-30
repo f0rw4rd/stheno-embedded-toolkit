@@ -58,12 +58,16 @@ build_openssl_cached() {
         x86_64) openssl_target="linux-x86_64" ;;
         i486|ix86le) openssl_target="linux-x86" ;;
         arm*) openssl_target="linux-armv4" ;;
+        aarch64_be) openssl_target="linux64-aarch64" ;;  # OpenSSL doesn't have specific BE target
         aarch64) openssl_target="linux-aarch64" ;;
+        mips64) openssl_target="linux64-mips64" ;;
         mips64*) openssl_target="linux64-mips64" ;;
         mips*) openssl_target="linux-mips32" ;;
         ppc64*|powerpc64*) openssl_target="linux-ppc64" ;;
         ppc*|powerpc*) openssl_target="linux-ppc" ;;
         s390x) openssl_target="linux64-s390x" ;;
+        riscv64) openssl_target="linux64-riscv64" ;;
+        riscv32) openssl_target="linux32-riscv32" ;;
         *) openssl_target="linux-generic32" ;;  # Generic 32-bit for other archs
     esac
     

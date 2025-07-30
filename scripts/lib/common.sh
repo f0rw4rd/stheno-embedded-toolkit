@@ -47,6 +47,8 @@ download_toolchain() {
         s390x) url="https://musl.cc/s390x-linux-musl-cross.tgz" ;;
         riscv32) url="https://musl.cc/riscv32-linux-musl-cross.tgz" ;;
         riscv64) url="https://musl.cc/riscv64-linux-musl-cross.tgz" ;;
+        aarch64_be) url="https://musl.cc/aarch64_be-linux-musl-cross.tgz" ;;
+        mips64) url="https://musl.cc/mips64-linux-musl-cross.tgz" ;;
         *) echo "Unknown architecture for toolchain: $arch"; return 1 ;;
     esac
     
@@ -295,6 +297,19 @@ setup_arch() {
             HOST="riscv64-linux-musl"
             CFLAGS_ARCH=""
             CONFIG_ARCH="riscv64"
+            ;;
+        # Additional architectures
+        aarch64_be)
+            CROSS_COMPILE="aarch64_be-linux-musl-"
+            HOST="aarch64_be-linux-musl"
+            CFLAGS_ARCH=""
+            CONFIG_ARCH="aarch64"
+            ;;
+        mips64)
+            CROSS_COMPILE="mips64-linux-musl-"
+            HOST="mips64-linux-musl"
+            CFLAGS_ARCH="-march=mips64r2"
+            CONFIG_ARCH="mips64"
             ;;
         *)
             echo "Unknown architecture: $arch"

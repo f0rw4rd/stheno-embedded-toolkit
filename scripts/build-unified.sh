@@ -99,11 +99,11 @@ ALL_ARCHS=(
     # ARM 32-bit
     arm32v5le arm32v5lehf arm32v7le arm32v7lehf armeb armv6 armv7m armv7r
     # ARM 64-bit
-    aarch64
+    aarch64 aarch64_be
     # x86
     i486 ix86le x86_64
     # MIPS
-    mips32v2le mips32v2be mipsn32 mipsn32el mips64le mips64n32 mips64n32el
+    mips32v2le mips32v2be mipsn32 mipsn32el mips64 mips64le mips64n32 mips64n32el
     # PowerPC
     ppc32be powerpcle powerpc64 ppc64le
     # SuperH

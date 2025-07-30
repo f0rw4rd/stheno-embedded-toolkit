@@ -66,6 +66,8 @@ declare -a TOOLCHAINS=(
     "https://musl.cc/s390x-linux-musl-cross.tgz s390x"
     "https://musl.cc/riscv32-linux-musl-cross.tgz riscv32"
     "https://musl.cc/riscv64-linux-musl-cross.tgz riscv64"
+    "https://musl.cc/aarch64_be-linux-musl-cross.tgz aarch64_be"
+    "https://musl.cc/mips64-linux-musl-cross.tgz mips64"
 )
 
 echo "Downloading ${#TOOLCHAINS[@]} toolchains in parallel..."

@@ -61,13 +61,13 @@ The build system runs inside Docker automatically when you use the `./build` scr
 
 ## Supported Architectures
 
-34 architectures are supported:
+36 architectures are supported:
 
-**ARM**: `aarch64`, `arm32v5le`, `arm32v5lehf`, `arm32v7le`, `arm32v7lehf`, `armeb`, `armv6`, `armv7m`
+**ARM**: `aarch64`, `aarch64_be`, `arm32v5le`, `arm32v5lehf`, `arm32v7le`, `arm32v7lehf`, `armeb`, `armv6`, `armv7m`, `armv7r`
 
 **x86**: `x86_64`, `i486`, `ix86le`
 
-**MIPS**: `mips32v2be`, `mips32v2le`, `mips64le`, `mips64n32`, `mips64n32el`
+**MIPS**: `mips32v2be`, `mips32v2le`, `mips64`, `mips64le`, `mips64n32`, `mips64n32el`, `mipsn32`, `mipsn32el`
 
 **PowerPC**: `ppc32be`, `ppc64le`, `powerpc64`, `powerpcle`
 
