@@ -50,9 +50,6 @@ build_tcpdump() {
     # Fix missing includes
     sed -i '1i#include <fcntl.h>' tcpdump.c
     
-    # Clean any previous build artifacts
-    make clean 2>/dev/null || true
-    
     # Configure with centralized build flags
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")

@@ -293,11 +293,10 @@ htmlcov/
 !Dockerfile*
 
 # Keep documentation
-!*.md
 !README*
 !LICENSE*
 !CHANGELOG*
-!docs/**/*.md
+*.md
 
 # Keep ccache config
 !ccache.conf
@@ -305,7 +304,3 @@ htmlcov/
 # Keep GitHub workflows
 !.github/
 
-### External Projects ###
-# External repositories and toolkits
-gdb-static/
-static-binaries/

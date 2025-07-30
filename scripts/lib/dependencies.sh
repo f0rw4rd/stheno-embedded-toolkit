@@ -52,7 +52,22 @@ build_openssl_cached() {
     export CXXFLAGS="$openssl_cflags" 
     export LDFLAGS="$ldflags"
     
-    ./config \
+    # Determine OpenSSL target based on architecture
+    local openssl_target=""
+    case "$arch" in
+        x86_64) openssl_target="linux-x86_64" ;;
+        i486|ix86le) openssl_target="linux-x86" ;;
+        arm*) openssl_target="linux-armv4" ;;
+        aarch64) openssl_target="linux-aarch64" ;;
+        mips64*) openssl_target="linux64-mips64" ;;
+        mips*) openssl_target="linux-mips32" ;;
+        ppc64*|powerpc64*) openssl_target="linux-ppc64" ;;
+        ppc*|powerpc*) openssl_target="linux-ppc" ;;
+        s390x) openssl_target="linux64-s390x" ;;
+        *) openssl_target="linux-generic32" ;;  # Generic 32-bit for other archs
+    esac
+    
+    ./Configure "$openssl_target" \
         --prefix="$cache_dir" \
         --openssldir="$cache_dir" \
         no-shared \
@@ -421,6 +436,7 @@ build_readline_cached() {
     echo "$cache_dir"
     return 0
 }
+
 
 # Export functions
 export -f build_openssl_cached

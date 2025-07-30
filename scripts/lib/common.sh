@@ -349,35 +349,23 @@ download_source() {
     local name=$1
     local version=$2
     local url=$3
-    local extract_dir="${4:-$name-$version}"
     
     # Ensure sources directory exists
     mkdir -p /build/sources
-    cd /build/sources
     
     # Download if needed
     local filename=$(basename "$url")
-    if [ ! -f "$filename" ]; then
+    if [ ! -f "/build/sources/$filename" ]; then
         echo "Downloading $name $version..."
-        if ! wget -q --show-progress "$url" -O "$filename"; then
+        if ! wget -q --show-progress "$url" -O "/build/sources/$filename"; then
             echo "Failed to download $name from $url"
-            rm -f "$filename"
+            rm -f "/build/sources/$filename"
             return 1
         fi
     fi
     
-    # Extract if needed
-    if [ ! -d "$extract_dir" ]; then
-        echo "Extracting $name $version..."
-        case "$filename" in
-            *.tar.gz) tar xzf "$filename" ;;
-            *.tar.xz) tar xf "$filename" ;;
-            *.tar.bz2) tar xjf "$filename" ;;
-            *) echo "Unknown archive format: $filename"; return 1 ;;
-        esac
-    fi
-    
-    cd "$extract_dir"
+    # Return success
+    # The caller is responsible for extracting in their build directory
     return 0
 }
 

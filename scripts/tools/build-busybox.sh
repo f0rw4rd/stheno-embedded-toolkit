@@ -48,11 +48,12 @@ build_busybox() {
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
-    make ARCH="$CONFIG_ARCH" \
-         CROSS_COMPILE="$CROSS_COMPILE" \
-         CFLAGS="$cflags" \
-         LDFLAGS="$ldflags" \
-         -j$(nproc) || {
+    # Export environment variables for busybox build
+    export CROSS_COMPILE="$CROSS_COMPILE"
+    export CFLAGS="$cflags"
+    export LDFLAGS="$ldflags"
+    
+    make ARCH="$CONFIG_ARCH" -j$(nproc) || {
         echo "[busybox] Build failed for $arch"
         cd /
         rm -rf "$build_dir"

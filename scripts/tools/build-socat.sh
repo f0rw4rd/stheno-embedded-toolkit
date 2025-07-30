@@ -81,8 +81,9 @@ EOF
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
-    CFLAGS="$cflags" \
-    LDFLAGS="$ldflags" \
+    export CFLAGS="$cflags"
+    export LDFLAGS="$ldflags"
+
     ./configure \
         --host=$HOST \
         --cache-file=config.cache \

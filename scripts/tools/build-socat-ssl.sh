@@ -44,16 +44,14 @@ build_socat_ssl() {
         return 1
     }
     
-    # Download source (it will be extracted to /build/sources)
+    # Download source
     download_source "socat" "$SOCAT_VERSION" "$SOCAT_URL" || return 1
     
-    # Create build directory and copy source
+    # Create build directory and extract
     mkdir -p "$build_dir"
     cd "$build_dir"
-    cp -r /build/sources/socat-${SOCAT_VERSION}/* .
-    
-    # Clean any previous build artifacts
-    clean_build
+    tar xf /build/sources/socat-${SOCAT_VERSION}.tar.gz
+    cd socat-${SOCAT_VERSION}
     
     # Create config.cache with cross-compilation values
     cat > config.cache << EOF

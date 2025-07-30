@@ -30,10 +30,11 @@ build_gdb_simple() {
     
     # Use centralized build flags
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
+    local cxxflags=$(get_cxx_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
     export CFLAGS="$cflags"
-    export CXXFLAGS="$cflags"
+    export CXXFLAGS="$cxxflags"
     export LDFLAGS="$ldflags"
     
     # Configure with static options
@@ -51,12 +52,16 @@ build_gdb_simple() {
         --disable-source-highlight \
         --disable-werror || {
         echo "[gdb] Configure failed for $arch"
+        cd /
+        rm -rf "$build_dir"
         return 1
     }
     
     # Build
     make -j$(nproc) || {
         echo "[gdb] Build failed for $arch"
+        cd /
+        rm -rf "$build_dir"
         return 1
     }
     
@@ -66,9 +71,15 @@ build_gdb_simple() {
         mkdir -p "/build/output/$arch"
         cp gdb/gdb "/build/output/$arch/gdb-simple"
         echo "[gdb] Built successfully for $arch"
+        
+        # Cleanup
+        cd /
+        rm -rf "$build_dir"
         return 0
     else
         echo "[gdb] Failed to build gdb for $arch"
+        cd /
+        rm -rf "$build_dir"
         return 1
     fi
 }

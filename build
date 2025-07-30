@@ -11,6 +11,7 @@ ARCHITECTURES="all"
 DEBUG=""
 DOWNLOAD_ONLY=false
 CLEAN=false
+INTERACTIVE=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -40,6 +41,9 @@ for arg in "$@"; do
         --clean)
             CLEAN=true
             ;;
+        -i|--interactive)
+            INTERACTIVE=true
+            ;;
         --help|-h)
             echo "Usage: $0 [TOOL] [OPTIONS]"
             echo ""
@@ -63,6 +67,7 @@ for arg in "$@"; do
             echo "  --arch ARCH      Build for specific architecture only"
             echo "  --arch all       Build for all architectures (default)"
             echo "  -d, --debug      Debug mode (verbose output)"
+            echo "  -i, --interactive  Launch interactive shell in build container"
             echo "  --download       Download sources and toolchains only"
             echo "  --clean          Clean output and logs directories"
             echo ""
@@ -126,6 +131,25 @@ if [ "$CLEAN" = true ]; then
     echo "- Removed all files from output/"
     echo "- Removed all files from logs/"
     exit 0
+fi
+
+# Handle interactive mode
+if [ "$INTERACTIVE" = true ]; then
+    echo "Starting interactive shell in build container..."
+    echo "=============================================="
+    echo "You are now in the Stheno build environment"
+    echo "Build directory: /build"
+    echo "Sources cache: /build/sources"
+    echo "Toolchains cache: /build/toolchains"
+    echo "=============================================="
+    exec docker run --rm -it \
+        -v "${PWD}:/build" \
+        -v sources-cache:/build/sources \
+        -v toolchains-cache:/build/toolchains \
+        -v deps-cache:/build/deps-cache \
+        -w /build \
+        stheno-builder:latest \
+        /bin/bash
 fi
 
 # Handle download-only mode
