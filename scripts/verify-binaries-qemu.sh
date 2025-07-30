@@ -71,6 +71,10 @@ declare -A TEST_COMMANDS=(
     ["strace"]="-V"
     ["tcpdump"]="--version"
     ["nmap"]="--version"
+    ["dropbear"]="-V"
+    ["dbclient"]="-V"
+    ["dropbearkey"]="-V"
+    ["scp"]="-h"
 )
 
 usage() {

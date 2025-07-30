@@ -115,7 +115,7 @@ ALL_ARCHS=(
 )
 
 # All tools
-ALL_TOOLS=(strace busybox bash socat socat-ssl ncat ncat-ssl tcpdump gdbserver gdb nmap)
+ALL_TOOLS=(strace busybox bash socat socat-ssl ncat ncat-ssl tcpdump gdbserver gdb nmap dropbear)
 
 # Determine what to build
 if [ "$TOOL" = "all" ]; then

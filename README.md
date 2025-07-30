@@ -57,6 +57,7 @@ The build system runs inside Docker automatically when you use the `./build` scr
 - **gdbserver** - Remote debugging server
 - **gdb** - GNU debugger
 - **nmap** - Network exploration tool
+- **dropbear** - Lightweight SSH server/client (includes dbclient, scp, dropbearkey)
 
 ## Supported Architectures
 

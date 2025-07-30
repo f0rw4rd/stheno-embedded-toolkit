@@ -62,6 +62,7 @@ for arg in "$@"; do
             echo "  gdbserver   Remote debugging server"
             echo "  gdb         GNU debugger"
             echo "  nmap        Network exploration and security auditing"
+            echo "  dropbear    Lightweight SSH server/client (includes scp)"
             echo ""
             echo "OPTIONS:"
             echo "  --arch ARCH      Build for specific architecture only"
@@ -90,7 +91,7 @@ for arg in "$@"; do
             echo "  $0 strace --arch x86_64  # Build strace for x86_64 only"
             exit 0
             ;;
-        strace|busybox|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|gdb|nmap)
+        strace|busybox|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|gdb|nmap|dropbear)
             TOOLS="$arg"
             ;;
         arm32v5le|arm32v5lehf|arm32v7le|arm32v7lehf|armeb|armv6|armv7m|armv7r|\

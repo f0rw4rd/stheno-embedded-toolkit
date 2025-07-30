@@ -25,6 +25,7 @@ declare -A TOOL_SCRIPTS=(
     # To build manually: ./build gdb --arch x86_64
     ["gdb"]="$SCRIPT_DIR/../tools/build-gdb.sh"
     ["nmap"]="$SCRIPT_DIR/../tools/build-nmap.sh"
+    ["dropbear"]="$SCRIPT_DIR/../tools/build-dropbear.sh"
 )
 
 # Build dispatcher
