@@ -60,8 +60,9 @@ jobs:
           echo "- **gdbserver** - Remote debugging server" >> release_notes.md
           echo "- **gdb** - GNU debugger" >> release_notes.md
           echo "- **nmap** - Network exploration tool" >> release_notes.md
+          echo "- **dropbear** - Lightweight SSH server/client (includes dbclient, dropbearkey, scp)" >> release_notes.md
           echo "" >> release_notes.md
-          echo "### Supported Architectures (32 total)" >> release_notes.md
+          echo "### Supported Architectures (36 total)" >> release_notes.md
           echo "Each zip file contains statically-linked binaries for a specific architecture:" >> release_notes.md
           echo "" >> release_notes.md
           cd output
