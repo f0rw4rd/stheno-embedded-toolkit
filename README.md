@@ -1,4 +1,4 @@
-# Stheno Embedded Toolkit Build System
+# Stheno Embedded Toolkit
 
 Fast, reliable pipeline for building static debugging tools for embedded systems.
 
@@ -28,20 +28,37 @@ The name "Stheno" is a playful reference - in Greek mythology, Stheno was one of
 
 The build system runs inside Docker automatically when you use the `./build` script. Docker is required for all builds.
 
+## Preload Libraries
+
+Build LD_PRELOAD libraries for all architectures:
+
+```bash
+# Build preload libraries
+./build-preload
+```
+
+Includes:
+- **libdesock** - Socket redirection library
+- **shell-env** - Execute commands from EXEC_CMD env var
+- **shell-helper** - Execute /dev/shm/helper.sh script
+- **shell-bind** - Bind shell on port
+- **shell-reverse** - Reverse shell
+- **shell-fifo** - Named pipe shell
+
 ## Build System Structure
 
 ```
 .
 ├── build                       # Main build script
-├── Dockerfile                 # Docker image for build environment
+├── build-preload              # Preload library build script
+├── Dockerfile.musl            # Docker image for musl builds
+├── Dockerfile.glibc           # Docker image for glibc builds
 ├── scripts/
 │   ├── build-unified.sh       # Core build system
-│   ├── lib/
-│   │   ├── common.sh         # Shared functions
-│   │   ├── tools.sh          # Tool-specific build functions
-│   │   ├── build_flags.sh    # Build configuration
-│   │   └── dependencies.sh   # Dependency management
-│   └── tools/                 # Individual tool build scripts
+│   ├── lib/                   # Shared libraries
+│   ├── tools/                 # Individual tool build scripts
+│   └── preload/               # Preload library build scripts
+├── preload-libs/              # Preload library sources
 ├── output/                    # Built binaries (release directory)
 └── configs/                   # Architecture configurations
 ```
@@ -50,7 +67,7 @@ The build system runs inside Docker automatically when you use the `./build` scr
 
 - **strace** - System call tracer
 - **busybox** - Multi-call binary with Unix utilities
-- **busybox_nodrop** - BusyBox variant that maintains SUID privileges (inspired by [prebuilt-multiarch-bin](https://github.com/leommxj/prebuilt-multiarch-bin))
+- **busybox_nodrop** - BusyBox variant that maintains SUID privileges when run as SUID root (inspired by [prebuilt-multiarch-bin](https://github.com/leommxj/prebuilt-multiarch-bin))
 - **bash** - Bourne Again Shell
 - **socat** - Socket relay tool
 - **ncat** - Network utility
