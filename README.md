@@ -49,7 +49,8 @@ The build system runs inside Docker automatically when you use the `./build` scr
 ## Available Tools
 
 - **strace** - System call tracer
-- **busybox** - Multi-call binary with Unix utilities  
+- **busybox** - Multi-call binary with Unix utilities
+- **busybox_nodrop** - BusyBox variant that maintains SUID privileges (inspired by [prebuilt-multiarch-bin](https://github.com/leommxj/prebuilt-multiarch-bin))
 - **bash** - Bourne Again Shell
 - **socat** - Socket relay tool
 - **ncat** - Network utility
@@ -84,6 +85,7 @@ TOOL:
   all         Build all tools (default)
   strace      System call tracer
   busybox     Multi-call binary
+  busybox_nodrop  BusyBox variant that maintains SUID privileges
   bash        Bourne Again Shell
   socat       Socket relay tool
   ncat        Network utility
@@ -132,6 +134,7 @@ This project builds upon the work of several excellent projects:
 
 - **[musl-cross-make](https://github.com/richfelker/musl-cross-make)** - Provides the cross-compilation toolchains
 - **[gdb-static](https://github.com/guyush1/gdb-static)** by guyush1 - Pre-built static GDB binaries for multiple architectures
+- **[prebuilt-multiarch-bin](https://github.com/leommxj/prebuilt-multiarch-bin)** by leommxj - Inspiration for the busybox_nodrop variant
 
 ### Tool Sources
 

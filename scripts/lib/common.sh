@@ -1,83 +1,22 @@
 #!/bin/bash
 # Common functions and variables for all build scripts
 
-# Download toolchain for architecture
+# Ensure toolchain exists (fail if missing)
 download_toolchain() {
     local arch=$1
     local toolchain_dir="/build/toolchains/$arch"
     
-    # Skip if already exists
+    # Check if toolchain exists
     if [ -d "$toolchain_dir/bin" ]; then
         return 0
     fi
     
-    # Map architecture to toolchain URL
-    local url
-    case $arch in
-        arm32v5le) url="https://musl.cc/arm-linux-musleabi-cross.tgz" ;;
-        arm32v5lehf) url="https://musl.cc/arm-linux-musleabihf-cross.tgz" ;;
-        arm32v7le|arm32v7lehf) url="https://musl.cc/armv7l-linux-musleabihf-cross.tgz" ;;
-        armeb) url="https://musl.cc/armeb-linux-musleabi-cross.tgz" ;;
-        armv6) url="https://musl.cc/armv6-linux-musleabihf-cross.tgz" ;;
-        armv7m) url="https://musl.cc/armv7m-linux-musleabi-cross.tgz" ;;
-        armv7r) url="https://musl.cc/armv7r-linux-musleabihf-cross.tgz" ;;
-        mips32v2le) url="https://musl.cc/mipsel-linux-musl-cross.tgz" ;;
-        mips32v2be) url="https://musl.cc/mips-linux-musl-cross.tgz" ;;
-        mipsn32) url="https://musl.cc/mips-linux-musln32sf-cross.tgz" ;;
-        mipsn32el) url="https://musl.cc/mipsel-linux-musln32sf-cross.tgz" ;;
-        mips64le) url="https://musl.cc/mips64el-linux-musl-cross.tgz" ;;
-        mips64n32) url="https://musl.cc/mips64-linux-musln32-cross.tgz" ;;
-        mips64n32el) url="https://musl.cc/mips64el-linux-musln32-cross.tgz" ;;
-        ppc32be) url="https://musl.cc/powerpc-linux-musl-cross.tgz" ;;
-        powerpcle) url="https://musl.cc/powerpcle-linux-musl-cross.tgz" ;;
-        powerpc64) url="https://musl.cc/powerpc64-linux-musl-cross.tgz" ;;
-        ppc64le) url="https://musl.cc/powerpc64le-linux-musl-cross.tgz" ;;
-        i486) url="https://musl.cc/i486-linux-musl-cross.tgz" ;;
-        ix86le) url="https://musl.cc/i686-linux-musl-cross.tgz" ;;
-        x86_64) url="https://musl.cc/x86_64-linux-musl-cross.tgz" ;;
-        aarch64) url="https://musl.cc/aarch64-linux-musl-cross.tgz" ;;
-        microblaze) url="https://musl.cc/microblaze-linux-musl-cross.tgz" ;;
-        microblazeel) url="https://musl.cc/microblazeel-linux-musl-cross.tgz" ;;
-        or1k) url="https://musl.cc/or1k-linux-musl-cross.tgz" ;;
-        m68k) url="https://musl.cc/m68k-linux-musl-cross.tgz" ;;
-        sh2) url="https://musl.cc/sh2-linux-musl-cross.tgz" ;;
-        sh2eb) url="https://musl.cc/sh2eb-linux-musl-cross.tgz" ;;
-        sh4) url="https://musl.cc/sh4-linux-musl-cross.tgz" ;;
-        sh4eb) url="https://musl.cc/sh4eb-linux-musl-cross.tgz" ;;
-        s390x) url="https://musl.cc/s390x-linux-musl-cross.tgz" ;;
-        riscv32) url="https://musl.cc/riscv32-linux-musl-cross.tgz" ;;
-        riscv64) url="https://musl.cc/riscv64-linux-musl-cross.tgz" ;;
-        aarch64_be) url="https://musl.cc/aarch64_be-linux-musl-cross.tgz" ;;
-        mips64) url="https://musl.cc/mips64-linux-musl-cross.tgz" ;;
-        *) echo "Unknown architecture for toolchain: $arch"; return 1 ;;
-    esac
-    
-    local filename=$(basename "$url")
-    
-    echo "Downloading toolchain for $arch..."
-    mkdir -p "/build/toolchains"
-    cd "/build/toolchains"
-    
-    # Download toolchain
-    if ! wget -q --show-progress "$url" -O "$filename"; then
-        echo "Failed to download toolchain for $arch"
-        return 1
-    fi
-    
-    # Extract to architecture directory
-    echo "Extracting toolchain for $arch..."
-    mkdir -p "$arch"
-    tar xzf "$filename" -C "$arch" --strip-components=1
-    rm -f "$filename"
-    
-    # Verify extraction
-    if [ ! -d "$toolchain_dir/bin" ]; then
-        echo "Failed to extract toolchain for $arch"
-        return 1
-    fi
-    
-    echo "Toolchain for $arch ready"
-    return 0
+    # Toolchain missing - fail immediately
+    echo "ERROR: Toolchain not found for $arch"
+    echo "Expected toolchain directory: $toolchain_dir"
+    echo "Toolchains should be pre-downloaded during Docker image build"
+    echo "Please rebuild the Docker image with: docker build -t stheno-toolkit ."
+    return 1
 }
 
 # Set architecture variables

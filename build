@@ -53,6 +53,7 @@ for arg in "$@"; do
             echo "  all         Build all tools (default)"
             echo "  strace      System call tracer"
             echo "  busybox     Multi-call binary with Unix utilities"
+            echo "  busybox_nodrop  BusyBox variant that maintains SUID privileges"
             echo "  bash        Bourne Again Shell"
             echo "  socat       Socket relay tool (without SSL)"
             echo "  socat-ssl   Socket relay tool (with OpenSSL)"
@@ -92,7 +93,7 @@ for arg in "$@"; do
             echo "  $0 strace --arch x86_64  # Build strace for x86_64 only"
             exit 0
             ;;
-        strace|busybox|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|gdb|nmap|dropbear)
+        strace|busybox|busybox_nodrop|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|gdb|nmap|dropbear)
             TOOLS="$arg"
             ;;
         arm32v5le|arm32v5lehf|arm32v7le|arm32v7lehf|armeb|armv6|armv7m|armv7r|\
@@ -160,7 +161,7 @@ if [ "$CLEAN" = true ]; then
     # Use Docker to clean with proper permissions
     docker run --rm \
         -v "${PWD}:/build" \
-        stheno-builder:latest \
+        sthenos-musl-builder \
         bash -c "rm -rf /build/output/* /build/logs/* && echo 'Clean complete!'"
     echo "- Removed all files from output/"
     echo "- Removed all files from logs/"
@@ -182,7 +183,7 @@ if [ "$INTERACTIVE" = true ]; then
         -v toolchains-cache:/build/toolchains \
         -v deps-cache:/build/deps-cache \
         -w /build \
-        stheno-builder:latest \
+        sthenos-musl-builder \
         /bin/bash
 fi
 
@@ -197,9 +198,9 @@ if [ "$DOWNLOAD_ONLY" = true ]; then
 fi
 
 # Build Docker image
-if ! docker image inspect stheno-builder:latest >/dev/null 2>&1; then
+if ! docker image inspect sthenos-musl-builder >/dev/null 2>&1; then
     echo "Building Docker image..."
-    docker build -t stheno-builder:latest .
+    docker build -t sthenos-musl-builder -f Dockerfile.musl .
 fi
 
 # Set debug flags if enabled
@@ -219,7 +220,7 @@ exec docker run --rm \
     -v deps-cache:/build/deps-cache \
     $DEBUG_FLAGS \
     -e SKIP_IF_EXISTS="${SKIP_IF_EXISTS:-true}" \
-    stheno-builder:latest \
+    sthenos-musl-builder:latest \
     $DEBUG_CMD /build/scripts/build-unified.sh \
     --log \
     "$TOOLS" \

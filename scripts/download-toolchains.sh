@@ -11,10 +11,33 @@ download_toolchain() {
     local url=$1
     local target_dir=$2
     local filename=$(basename "$url")
+    local max_retries=3
+    local retry_count=0
+    local download_success=false
     
     echo "Downloading $target_dir..."
-    if wget -q "$url" -O "$filename"; then
-        tar xzf "$filename"
+    
+    # Download with retries
+    while [ $retry_count -lt $max_retries ]; do
+        if wget -q --tries=2 --timeout=30 "$url" -O "$filename"; then
+            download_success=true
+            break
+        else
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+                echo "  Retry $retry_count/$max_retries for $target_dir..."
+                sleep 5
+            fi
+        fi
+    done
+    
+    if [ "$download_success" = false ]; then
+        echo "✗ Failed to download $target_dir after $max_retries attempts"
+        return 1
+    fi
+    
+    # Extract and move
+    if tar xzf "$filename"; then
         local extracted_dir="${filename%.tgz}"
         extracted_dir="${extracted_dir%-cross}"
         if [ -d "$extracted_dir" ]; then
@@ -23,7 +46,8 @@ download_toolchain() {
         rm -f "$filename"
         echo "✓ $target_dir"
     else
-        echo "✗ Failed to download $target_dir"
+        echo "✗ Failed to extract $target_dir"
+        rm -f "$filename"
         return 1
     fi
 }
@@ -72,12 +96,112 @@ declare -a TOOLCHAINS=(
 
 echo "Downloading ${#TOOLCHAINS[@]} toolchains in parallel..."
 
+# Create a temporary directory for job tracking
+JOB_DIR="/tmp/musl-toolchain-jobs-$$"
+mkdir -p "$JOB_DIR"
+
+# Function to download with job tracking
+download_with_tracking() {
+    local line="$1"
+    local url=$(echo "$line" | cut -d' ' -f1)
+    local target_dir=$(echo "$line" | cut -d' ' -f2)
+    local job_file="$JOB_DIR/$target_dir"
+    
+    if download_toolchain "$url" "$target_dir"; then
+        echo "success" > "$job_file"
+    else
+        echo "failed" > "$job_file"
+    fi
+}
+
+# Export function for parallel execution
+export -f download_with_tracking
+export JOB_DIR
+
 # Use GNU parallel if available, otherwise use xargs
 if command -v parallel >/dev/null 2>&1; then
-    printf '%s\n' "${TOOLCHAINS[@]}" | parallel -j 8 --colsep ' ' download_toolchain {1} {2}
+    printf '%s\n' "${TOOLCHAINS[@]}" | parallel -j 8 download_with_tracking {}
 else
     # Use xargs with -P for parallel processing
-    printf '%s\n' "${TOOLCHAINS[@]}" | xargs -P 8 -I {} bash -c 'download_toolchain $@' _ {}
+    printf '%s\n' "${TOOLCHAINS[@]}" | xargs -P 8 -I {} bash -c 'download_with_tracking "$@"' _ {}
+fi
+
+# Count results
+TOTAL=0
+SUCCESS=0
+FAILED=0
+FAILED_TOOLCHAINS=""
+
+for line in "${TOOLCHAINS[@]}"; do
+    target_dir=$(echo "$line" | cut -d' ' -f2)
+    TOTAL=$((TOTAL + 1))
+    if [ -f "$JOB_DIR/$target_dir" ]; then
+        result=$(cat "$JOB_DIR/$target_dir")
+        if [ "$result" = "success" ]; then
+            SUCCESS=$((SUCCESS + 1))
+        else
+            FAILED=$((FAILED + 1))
+            FAILED_TOOLCHAINS="$FAILED_TOOLCHAINS|$line"
+        fi
+    else
+        FAILED=$((FAILED + 1))
+        FAILED_TOOLCHAINS="$FAILED_TOOLCHAINS|$line"
+        echo "No result for: $target_dir"
+    fi
+done
+
+# Cleanup job directory
+rm -rf "$JOB_DIR"
+
+echo
+echo "==================================="
+echo "Download Summary"
+echo "==================================="
+echo "Total: $TOTAL"
+echo "Successful: $SUCCESS"
+echo "Failed: $FAILED"
+
+if [ "$FAILED" -gt 0 ]; then
+    echo
+    echo "Retrying failed downloads sequentially..."
+    echo
+    
+    # Convert to array and retry
+    IFS='|' read -ra FAILED_ARRAY <<< "$FAILED_TOOLCHAINS"
+    RETRY_SUCCESS=0
+    
+    for line in "${FAILED_ARRAY[@]}"; do
+        if [ -n "$line" ]; then
+            url=$(echo "$line" | cut -d' ' -f1)
+            target_dir=$(echo "$line" | cut -d' ' -f2)
+            
+            echo "Retrying download for $target_dir..."
+            if download_toolchain "$url" "$target_dir"; then
+                RETRY_SUCCESS=$((RETRY_SUCCESS + 1))
+                echo "Successfully downloaded $target_dir on retry"
+            else
+                echo "Failed to download $target_dir even on retry"
+            fi
+        fi
+    done
+    
+    # Recalculate final results
+    FINAL_FAILED=$((FAILED - RETRY_SUCCESS))
+    FINAL_SUCCESS=$((SUCCESS + RETRY_SUCCESS))
+    
+    echo
+    echo "==================================="
+    echo "Final Download Summary"
+    echo "==================================="
+    echo "Total: $TOTAL"
+    echo "Successful: $FINAL_SUCCESS"
+    echo "Failed: $FINAL_FAILED"
+    
+    if [ "$FINAL_FAILED" -gt 0 ]; then
+        echo
+        echo "ERROR: $FINAL_FAILED toolchain(s) failed to download even after retries"
+        exit 1
+    fi
 fi
 
 # Special case: arm32v7lehf is a copy of arm32v7le
@@ -86,4 +210,5 @@ if [ -d "arm32v7le" ] && [ ! -d "arm32v7lehf" ]; then
     echo "✓ arm32v7lehf (copied from arm32v7le)"
 fi
 
+echo
 echo "All toolchains downloaded successfully"

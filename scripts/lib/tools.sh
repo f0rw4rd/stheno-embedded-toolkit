@@ -14,6 +14,7 @@ parallel_make() {
 declare -A TOOL_SCRIPTS=(
     ["strace"]="$SCRIPT_DIR/../tools/build-strace.sh"
     ["busybox"]="$SCRIPT_DIR/../tools/build-busybox.sh"
+    ["busybox_nodrop"]="$SCRIPT_DIR/../tools/build-busybox.sh"
     ["bash"]="$SCRIPT_DIR/../tools/build-bash.sh"
     ["socat"]="$SCRIPT_DIR/../tools/build-socat.sh"
     ["socat-ssl"]="$SCRIPT_DIR/../tools/build-socat-ssl.sh"
@@ -51,7 +52,12 @@ build_tool() {
     chmod +x "$script"
     
     # Execute the build script
-    "$script" "$arch"
+    # Special handling for busybox_nodrop
+    if [ "$tool" = "busybox_nodrop" ]; then
+        "$script" "$arch" "nodrop"
+    else
+        "$script" "$arch"
+    fi
 }
 
 # Export functions
