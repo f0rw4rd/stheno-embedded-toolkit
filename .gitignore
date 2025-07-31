@@ -304,3 +304,5 @@ htmlcov/
 # Keep GitHub workflows
 !.github/
 
+# Allow output-preload directory
+!output-preload/
