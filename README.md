@@ -54,7 +54,9 @@ libdesock redirects network socket operations to stdin/stdout, making it ideal f
 LD_PRELOAD=./output-preload/glibc/x86_64/libdesock.so ./network_app
 
 # Fuzzing example with AFL++
-echo "test data" | LD_PRELOAD=./libdesock.so ./vulnerable_server
+export AFL_PRELOAD=./output-preload/glibc/x86_64/libdesock.so
+export AFL_TMPDIR=/tmp
+afl-fuzz -i corpus -o findings -m none -- ./nginx
 
 # Multiple requests with delimiter
 (echo "request1"; echo "-=^..^=-"; echo "request2") | \
