@@ -38,12 +38,32 @@ Build LD_PRELOAD libraries for all architectures:
 ```
 
 Includes:
-- **libdesock** - Socket redirection library
+- **libdesock** - Socket redirection library for fuzzing (from [FKIE-CAD](https://github.com/fkie-cad/libdesock))
 - **shell-env** - Execute commands from EXEC_CMD env var
 - **shell-helper** - Execute /dev/shm/helper.sh script
 - **shell-bind** - Bind shell on port
 - **shell-reverse** - Reverse shell
 - **shell-fifo** - Named pipe shell
+
+### libdesock Example
+
+libdesock redirects network socket operations to stdin/stdout, making it ideal for fuzzing network applications:
+
+```bash
+# Basic usage - redirect network I/O to stdin/stdout
+LD_PRELOAD=./output-preload/glibc/x86_64/libdesock.so ./network_app
+
+# Fuzzing example with AFL++
+echo "test data" | LD_PRELOAD=./libdesock.so ./vulnerable_server
+
+# Multiple requests with delimiter
+(echo "request1"; echo "-=^..^=-"; echo "request2") | \
+  LD_PRELOAD=./libdesock.so ./web_server
+
+# Configuration options
+DESOCK_CONNECT=1 LD_PRELOAD=./libdesock.so ./client_app  # For connect mode
+DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
+```
 
 ## Build System Structure
 
