@@ -12,7 +12,7 @@ ARCHITECTURES="all"
 DEBUG=""
 CLEAN=false
 INTERACTIVE=false
-LIBC_TYPE=""
+LIBC_TYPE="both"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -62,8 +62,8 @@ OPTIONS:
   -d, --debug      Debug mode (verbose output)
   -i, --interactive  Launch interactive shell in build container
   --clean          Clean output and toolchain directories
-  --libc TYPE      Build with specific libc (glibc or musl, default: glibc)
-  --both           Build with both glibc and musl
+  --libc TYPE      Build with specific libc (glibc or musl, default: both)
+  --both           Build with both glibc and musl (default)
 
 ARCHITECTURES:
   x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x
@@ -164,8 +164,7 @@ DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/logs-preload:/build/logs-preload"
 
 # Container-specific mounts
 if [ "$LIBC_TYPE" = "musl" ]; then
-    # For musl builds, mount the musl toolchains and scripts
-    DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/toolchains:/build/toolchains"
+    # For musl builds, don't mount toolchains - they're in the Docker image
     DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/scripts:/build/scripts:ro"
     DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/preload-libs:/build/preload-libs:ro"
 else
@@ -193,46 +192,42 @@ echo "Preload Library Build Pipeline"
 echo "==================================="
 echo "Libraries: $LIBRARIES"
 echo "Architectures: $ARCHITECTURES"
-if [ "$LIBC_TYPE" = "both" ]; then
-    echo "Libc: both (glibc and musl)"
-else
-    echo "Libc: ${LIBC_TYPE:-glibc}"
-fi
+echo "Libc: ${LIBC_TYPE}"
 echo "Start time: $(date)"
 echo
 
 if [ "$LIBC_TYPE" = "both" ]; then
-        # For both, we need to handle it differently
-        # First build glibc with the preload container
-        echo ">>> Building with glibc..."
-        ARGS=""
-        [ "$LIBRARIES" != "all" ] && ARGS="$LIBRARIES"
-        [ "$ARCHITECTURES" != "all" ] && ARGS="$ARGS --arch $ARCHITECTURES"
-        [ -n "$DEBUG" ] && ARGS="$ARGS -d"
-        "$0" $ARGS --libc glibc
-        
-        # Then build musl with the main container
-        echo
-        echo ">>> Building with musl..."
-        "$0" $ARGS --libc musl
-        
-        echo
-        echo "==================================="
-        echo "Build Complete!"
-        echo "==================================="
-        echo "Output structure:"
-        echo "  output-preload/glibc/<arch>/*.so"
-        echo "  output-preload/musl/<arch>/*.so"
-        exit 0
-    elif [ "$LIBC_TYPE" = "musl" ]; then
-        # For musl builds, use the special musl build script
-        BUILD_CMD="/build/scripts/build-preload-musl.sh"
-    else
-        # For glibc builds, use the unified build script
-        BUILD_CMD="/build/scripts/preload/build-unified.sh"
-    fi
-    [ -n "$DEBUG" ] && BUILD_CMD="$BUILD_CMD -d"
-    BUILD_CMD="$BUILD_CMD $LIBRARIES $ARCHITECTURES"
+    # For both, we need to handle it differently
+    # First build glibc with the preload container
+    echo ">>> Building with glibc..."
+    ARGS=""
+    [ "$LIBRARIES" != "all" ] && ARGS="$LIBRARIES"
+    [ "$ARCHITECTURES" != "all" ] && ARGS="$ARGS --arch $ARCHITECTURES"
+    [ -n "$DEBUG" ] && ARGS="$ARGS -d"
+    "$0" $ARGS --libc glibc || true
+    
+    # Then build musl with the main container
+    echo
+    echo ">>> Building with musl..."
+    "$0" $ARGS --libc musl || true
+    
+    echo
+    echo "==================================="
+    echo "Build Complete!"
+    echo "==================================="
+    echo "Output structure:"
+    echo "  output-preload/glibc/<arch>/*.so"
+    echo "  output-preload/musl/<arch>/*.so"
+    exit 0
+elif [ "$LIBC_TYPE" = "musl" ]; then
+    # For musl builds, use the special musl build script
+    BUILD_CMD="/build/scripts/build-preload-musl.sh"
+else
+    # For glibc builds, use the unified build script
+    BUILD_CMD="/build/scripts/preload/build-unified.sh"
+fi
+[ -n "$DEBUG" ] && BUILD_CMD="$BUILD_CMD -d"
+BUILD_CMD="$BUILD_CMD $LIBRARIES $ARCHITECTURES"
 
 # Execute build
 $DOCKER_CMD "${IMAGE_NAME}" $BUILD_CMD

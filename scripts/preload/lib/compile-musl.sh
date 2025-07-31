@@ -33,7 +33,7 @@ build_preload_library_musl() {
     
     # Get musl toolchain path
     local musl_prefix=$(get_musl_toolchain_prefix "$arch")
-    local musl_toolchain_dir="/toolchains/$arch"
+    local musl_toolchain_dir="/build/toolchains/${musl_prefix}-cross"
     
     if [ ! -d "$musl_toolchain_dir" ]; then
         log_error "Musl toolchain not available for $arch"
@@ -162,12 +162,36 @@ get_musl_toolchain_prefix() {
     case "$arch" in
         x86_64)      echo "x86_64-linux-musl" ;;
         aarch64)     echo "aarch64-linux-musl" ;;
-        arm32v7le)   echo "arm-linux-musleabihf" ;;
+        aarch64_be)  echo "aarch64_be-linux-musl" ;;
+        arm32v5le)   echo "arm-linux-musleabi" ;;
+        arm32v5lehf) echo "arm-linux-musleabihf" ;;
+        arm32v7le)   echo "armv7l-linux-musleabihf" ;;
+        arm32v7lehf) echo "armv7l-linux-musleabihf" ;;
+        armeb)       echo "armeb-linux-musleabi" ;;
+        armv6)       echo "armv6-linux-musleabihf" ;;
+        armv7m)      echo "armv7m-linux-musleabi" ;;
+        armv7r)      echo "armv7r-linux-musleabihf" ;;
         i486)        echo "i486-linux-musl" ;;
+        ix86le)      echo "i686-linux-musl" ;;
+        m68k)        echo "m68k-linux-musl" ;;
+        microblaze)  echo "microblaze-linux-musl" ;;
+        microblazeel) echo "microblazeel-linux-musl" ;;
+        mips32v2be)  echo "mips-linux-musl" ;;
+        mips32v2le)  echo "mipsel-linux-musl" ;;
+        mips64)      echo "mips64-linux-musl" ;;
         mips64le)    echo "mips64el-linux-musl" ;;
+        or1k)        echo "or1k-linux-musl" ;;
+        ppc32be)     echo "powerpc-linux-musl" ;;
+        powerpcle)   echo "powerpcle-linux-musl" ;;
+        powerpc64)   echo "powerpc64-linux-musl" ;;
         ppc64le)     echo "powerpc64le-linux-musl" ;;
+        riscv32)     echo "riscv32-linux-musl" ;;
         riscv64)     echo "riscv64-linux-musl" ;;
-        # Add more as needed - not all architectures may be available in musl
-        *)           echo "${arch}-linux-musl" ;;
+        s390x)       echo "s390x-linux-musl" ;;
+        sh2)         echo "sh2-linux-musl" ;;
+        sh2eb)       echo "sh2eb-linux-musl" ;;
+        sh4)         echo "sh4-linux-musl" ;;
+        sh4eb)       echo "sh4eb-linux-musl" ;;
+        *)           echo "" ;;
     esac
 }
