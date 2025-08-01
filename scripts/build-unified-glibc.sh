@@ -19,7 +19,7 @@ fi
 
 # Override paths for glibc builds (reusing preload infrastructure)
 TOOLCHAINS_DIR="/build/toolchains-preload"
-OUTPUT_DIR="/build/output-glibc-static"
+OUTPUT_DIR="/build/output"
 BUILD_DIR="/build/tmp/build-glibc-static"
 SOURCES_DIR="/build/sources"
 DEPS_PREFIX="/build/deps-glibc-static"
@@ -38,9 +38,37 @@ get_glibc_tools() {
     echo "ltrace"  # Currently only ltrace
 }
 
+# Map glibc arch names to musl arch names for consistent output
+map_arch_to_musl() {
+    local arch="$1"
+    case "$arch" in
+        arm32v7le)   echo "arm32v7le" ;;
+        armv5)       echo "arm32v5le" ;;
+        armv6)       echo "armv6" ;;
+        ppc32)       echo "ppc32be" ;;
+        ppc64le)     echo "ppc64le" ;;
+        i486)        echo "i486" ;;
+        mips32)      echo "mips32v2be" ;;
+        mips32el)    echo "mips32v2le" ;;
+        openrisc)    echo "or1k" ;;
+        powerpc64)   echo "powerpc64" ;;
+        *)           echo "$arch" ;;
+    esac
+}
+
 # Setup architecture with glibc toolchain
 setup_arch_glibc() {
     local arch="$1"
+    
+    # Map musl arch names to glibc arch names if needed
+    case "$arch" in
+        arm32v5le)   arch="armv5" ;;
+        arm32v7le)   arch="arm32v7le" ;;
+        ppc32be)     arch="ppc32" ;;
+        mips32v2be)  arch="mips32" ;;
+        mips32v2le)  arch="mips32el" ;;
+        or1k)        arch="openrisc" ;;
+    esac
     
     # Map architecture to toolchain prefix (using same mapping as preload)
     case "$arch" in
@@ -131,8 +159,11 @@ build_glibc_tool() {
     
     echo "[$(date +%H:%M:%S)] Building $tool for $arch with glibc..."
     
+    # Map to musl arch name for output directory
+    local musl_arch=$(map_arch_to_musl "$arch")
+    
     # Create architecture output directory
-    local arch_output="${OUTPUT_DIR}/${arch}"
+    local arch_output="${OUTPUT_DIR}/${musl_arch}"
     mkdir -p "$arch_output"
     
     # Set up architecture
