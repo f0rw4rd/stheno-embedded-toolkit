@@ -105,6 +105,10 @@ build_glibc_tool() {
         return 1
     fi
     
+    # Set per-architecture deps path
+    export DEPS_PREFIX="${DEPS_PREFIX}/${arch}"
+    mkdir -p "${DEPS_PREFIX}/lib" "${DEPS_PREFIX}/include"
+    
     # Build the tool
     local build_script="${SCRIPT_DIR}/tools/build-${tool}.sh"
     if [ ! -f "$build_script" ]; then

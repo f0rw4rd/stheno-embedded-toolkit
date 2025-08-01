@@ -173,8 +173,8 @@ build_tool() {
     
     cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
     
-    # Build everything first
-    make -j$(nproc) || true  # Allow it to fail at linking stage
+    # Build everything first with verbose output
+    make V=1 -j$(nproc) || true  # Allow it to fail at linking stage
     
     # Check if we have the necessary files
     if [ ! -f "main.o" ] || [ ! -f ".libs/libltrace.a" ]; then
@@ -182,10 +182,28 @@ build_tool() {
         return 1
     fi
     
-    # Remove demangle.o from libltrace.a to avoid C++ dependency
-    ${AR} d .libs/libltrace.a demangle.o || true
+    # Create a stub demangle.c that provides dummy functions
+    cat > demangle_stub.c << 'EOF'
+/* Stub implementation to avoid C++ dependency */
+#include <stdlib.h>
+#include <string.h>
+
+char *my_demangle(const char *function_name) {
+    /* Just return a copy of the original name without demangling */
+    if (!function_name) return NULL;
+    return strdup(function_name);
+}
+EOF
+    
+    # Compile the stub
+    ${CC} -c demangle_stub.c -o demangle_stub.o
+    
+    # Remove original demangle.o and add our stub
+    ${AR} d .libs/libltrace.a demangle.o 2>/dev/null || true
+    ${AR} r .libs/libltrace.a demangle_stub.o
     
     # Manually link ltrace statically without C++ dependencies
+    echo "[$(date +%H:%M:%S)] Attempting static link..."
     ${CC} -static -o ltrace main.o .libs/libltrace.a sysdeps/.libs/libos.a \
         -L${DEPS_PREFIX}/lib -lelf -lz -lpthread -lm || {
         echo "[$(date +%H:%M:%S)] ERROR: Manual linking failed" >&2
