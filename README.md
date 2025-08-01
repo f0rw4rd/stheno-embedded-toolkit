@@ -22,6 +22,12 @@ The name "Stheno" is a playful reference - in Greek mythology, Stheno was one of
 
 # Build specific tool for specific architecture
 ./build strace --arch arm32v5le
+
+# Build glibc static tools (like ltrace)
+./build-glibc-static ltrace
+
+# Build ltrace for specific architecture
+./build-glibc-static ltrace --arch x86_64
 ```
 
 ## Docker Build
@@ -71,10 +77,12 @@ DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
 
 ```
 .
-├── build                       # Main build script
+├── build                       # Main build script (musl static)
 ├── build-preload              # Preload library build script
+├── build-glibc-static         # Build script for glibc static tools
 ├── Dockerfile.musl            # Docker image for musl builds
-├── Dockerfile.glibc           # Docker image for glibc builds
+├── Dockerfile.glibc           # Docker image for glibc preload builds
+├── Dockerfile.glibc-static    # Docker image for glibc static builds
 ├── scripts/
 │   ├── build-unified.sh       # Core build system
 │   ├── lib/                   # Shared libraries
@@ -87,6 +95,7 @@ DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
 
 ## Available Tools
 
+### Musl Static Tools (default)
 - **strace** - System call tracer
 - **busybox** - Multi-call binary with Unix utilities
 - **busybox_nodrop** - BusyBox variant that maintains SUID privileges when run as SUID root (inspired by [prebuilt-multiarch-bin](https://github.com/leommxj/prebuilt-multiarch-bin))
@@ -98,6 +107,11 @@ DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
 - **gdb** - GNU debugger
 - **nmap** - Network exploration tool
 - **dropbear** - Lightweight SSH server/client (includes dbclient, scp, dropbearkey)
+
+### Glibc Static Tools (new)
+- **ltrace** - Library call tracer (requires glibc for functionality)
+
+**Note on glibc static builds**: Due to glibc's design, "static" binaries built with glibc may still require certain runtime libraries for features like hostname resolution (NSS) and locale support. These tools are provided for environments where glibc is the standard C library.
 
 ## Supported Architectures
 

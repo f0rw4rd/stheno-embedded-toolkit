@@ -1,0 +1,100 @@
+# Dockerfile for building static binaries with glibc
+# Ubuntu-based for glibc static linking support
+# Used for tools that require glibc (like ltrace)
+
+FROM ubuntu:20.04
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies for building static glibc binaries
+RUN apt-get update && apt-get install -y \
+    # Build essentials
+    build-essential \
+    git \
+    autoconf \
+    automake \
+    libtool \
+    libtool-bin \
+    pkg-config \
+    # Download tools
+    wget \
+    curl \
+    # Archive tools
+    tar \
+    gzip \
+    bzip2 \
+    xz-utils \
+    # Build dependencies
+    bison \
+    flex \
+    texinfo \
+    gawk \
+    bc \
+    # Static libraries for glibc builds
+    libc6-dev \
+    libelf-dev \
+    libelf1 \
+    elfutils \
+    libdw-dev \
+    libiberty-dev \
+    binutils-dev \
+    # For ltrace specifically
+    libunwind-dev \
+    libunwind8 \
+    # Development libraries (static versions)
+    libncurses5-dev \
+    libssl-dev \
+    zlib1g-dev \
+    # For C++ demangling
+    libstdc++-9-dev \
+    # Debugging tools
+    file \
+    strace \
+    gdb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install static libraries that might be missing
+RUN apt-get update && apt-get install -y \
+    libc6-dev-i386 \
+    lib32gcc-9-dev \
+    lib32stdc++-9-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /build/toolchains-glibc-static && \
+    mkdir -p /build/output-glibc-static && \
+    mkdir -p /build/logs-glibc-static && \
+    mkdir -p /build/scripts/glibc-static && \
+    mkdir -p /build/sources && \
+    mkdir -p /build/deps
+
+# Create build user
+RUN useradd -m -s /bin/bash builder && \
+    echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Set ownership
+RUN chown -R builder:builder /build
+
+# Switch to builder user
+USER builder
+WORKDIR /build
+
+# Copy the existing glibc toolchains download scripts
+# We'll reuse the Bootlin toolchains
+COPY --chown=builder:builder scripts/preload/download-toolchains.sh /build/scripts/glibc-static/
+COPY --chown=builder:builder scripts/preload/download-all-toolchains.sh /build/scripts/glibc-static/
+COPY --chown=builder:builder scripts/preload/lib/common.sh /build/scripts/glibc-static/
+
+# Modify paths for glibc-static
+RUN sed -i 's|toolchains-preload|toolchains-glibc-static|g' /build/scripts/glibc-static/*.sh && \
+    sed -i 's|output-preload|output-glibc-static|g' /build/scripts/glibc-static/*.sh
+
+# Build argument for parallel downloads
+ARG TOOLCHAIN_PARALLEL_DOWNLOADS=8
+
+# Download toolchains (using modified scripts)
+RUN TOOLCHAIN_PARALLEL_DOWNLOADS=${TOOLCHAIN_PARALLEL_DOWNLOADS} /build/scripts/glibc-static/download-all-toolchains.sh
+
+# Default command
+CMD ["/bin/bash"]
