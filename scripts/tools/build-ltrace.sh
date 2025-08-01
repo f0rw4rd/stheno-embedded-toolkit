@@ -34,19 +34,33 @@ download_source() {
         git checkout master
         git pull
         
-        # Create tarball
+        # Create tarball with correct directory name
         cd ..
-        tar czf "${TOOL_NAME}-${TOOL_VERSION}.tar.gz" ltrace/
+        mv ltrace "${TOOL_NAME}-${TOOL_VERSION}"
+        tar czf "${TOOL_NAME}-${TOOL_VERSION}.tar.gz" "${TOOL_NAME}-${TOOL_VERSION}"/
+        mv "${TOOL_NAME}-${TOOL_VERSION}" ltrace
         cd ..
     fi
     
-    # Extract
-    echo "[$(date +%H:%M:%S)] Extracting ltrace source..."
-    cd "$BUILD_DIR"
-    rm -rf "${TOOL_NAME}-${TOOL_VERSION}"
+    # Extract to architecture-specific directory
+    echo "[$(date +%H:%M:%S)] Extracting ltrace source for $arch..."
+    local arch_build_dir="${BUILD_DIR}/${TOOL_NAME}-${TOOL_VERSION}-${arch}"
+    mkdir -p "$arch_build_dir"
+    cd "$arch_build_dir"
+    
+    # Extract the tarball
     tar xzf "$SOURCES_DIR/${TOOL_NAME}-${TOOL_VERSION}.tar.gz"
-    if [ -d "ltrace" ] && [ ! -d "${TOOL_NAME}-${TOOL_VERSION}" ]; then
+    
+    # The tarball might extract to different directory names
+    if [ -d "ltrace-temp" ]; then
+        mv ltrace-temp "${TOOL_NAME}-${TOOL_VERSION}"
+    elif [ -d "ltrace" ]; then
         mv ltrace "${TOOL_NAME}-${TOOL_VERSION}"
+    elif [ ! -d "${TOOL_NAME}-${TOOL_VERSION}" ]; then
+        echo "[$(date +%H:%M:%S)] ERROR: Failed to extract ltrace source" >&2
+        echo "[$(date +%H:%M:%S)] Looking for extracted directory..." >&2
+        ls -la | grep -E "^d" >&2
+        return 1
     fi
 }
 
@@ -54,14 +68,33 @@ configure_build() {
     local arch="$1"
     local build_dir="$2"
     
-    # The source was extracted to a subdirectory
-    cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
+    # The source was extracted to architecture-specific subdirectory
+    local arch_build_dir="${BUILD_DIR}/${TOOL_NAME}-${TOOL_VERSION}-${arch}"
+    local src_dir="${arch_build_dir}/${TOOL_NAME}-${TOOL_VERSION}"
+    
+    if [ ! -d "$src_dir" ]; then
+        echo "[$(date +%H:%M:%S)] ERROR: Source directory not found: $src_dir" >&2
+        echo "[$(date +%H:%M:%S)] Contents of arch build dir:" >&2
+        ls -la "$arch_build_dir" >&2
+        return 1
+    fi
+    
+    cd "$src_dir"
+    
+    # Ensure we're in the right directory
+    if [ ! -f "configure.ac" ] && [ ! -f "autogen.sh" ]; then
+        echo "[$(date +%H:%M:%S)] ERROR: Not in ltrace source directory" >&2
+        echo "[$(date +%H:%M:%S)] Current directory: $(pwd)" >&2
+        echo "[$(date +%H:%M:%S)] Contents:" >&2
+        ls -la >&2
+        return 1
+    fi
     
     # Run autogen if needed
     if [ ! -f "configure" ]; then
         echo "[$(date +%H:%M:%S)] Running autogen.sh..."
         # Use system autotools, not the ones from toolchain
-        PATH="/usr/bin:/bin:$PATH" sh ./autogen.sh || {
+        PATH="/usr/bin:/bin:$PATH" bash ./autogen.sh || {
             echo "[$(date +%H:%M:%S)] ERROR: autogen.sh failed" >&2
             return 1
         }
@@ -76,7 +109,7 @@ configure_build() {
     build_static_deps "$arch"
     
     # Return to ltrace source directory after building deps
-    cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
+    cd "$src_dir"
     
     # Configure for static build
     # Note: We disable libunwind to simplify the build
@@ -171,7 +204,11 @@ build_tool() {
     local arch="$1"
     local build_dir="$2"
     
-    cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
+    # Use architecture-specific directory
+    local arch_build_dir="${BUILD_DIR}/${TOOL_NAME}-${TOOL_VERSION}-${arch}"
+    local src_dir="${arch_build_dir}/${TOOL_NAME}-${TOOL_VERSION}"
+    
+    cd "$src_dir"
     
     # Build everything first with verbose output
     make V=1 -j$(nproc) || true  # Allow it to fail at linking stage
@@ -216,7 +253,11 @@ install_tool() {
     local build_dir="$2"
     local install_dir="$3"
     
-    cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
+    # Use architecture-specific directory
+    local arch_build_dir="${BUILD_DIR}/${TOOL_NAME}-${TOOL_VERSION}-${arch}"
+    local src_dir="${arch_build_dir}/${TOOL_NAME}-${TOOL_VERSION}"
+    
+    cd "$src_dir"
     
     # Install the binary
     install -D -m 755 ltrace "$install_dir/ltrace"

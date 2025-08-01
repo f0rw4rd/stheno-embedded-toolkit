@@ -52,6 +52,7 @@ map_arch_to_musl() {
         mips32el)    echo "mips32v2le" ;;
         openrisc)    echo "or1k" ;;
         powerpc64)   echo "powerpc64" ;;
+        aarch64be)   echo "aarch64_be" ;;
         *)           echo "$arch" ;;
     esac
 }
@@ -68,6 +69,7 @@ setup_arch_glibc() {
         mips32v2be)  arch="mips32" ;;
         mips32v2le)  arch="mips32el" ;;
         or1k)        arch="openrisc" ;;
+        aarch64_be)  arch="aarch64be" ;;
     esac
     
     # Map architecture to toolchain prefix (using same mapping as preload)
@@ -157,8 +159,6 @@ build_glibc_tool() {
     local tool="$1"
     local arch="$2"
     
-    echo "[$(date +%H:%M:%S)] Building $tool for $arch with glibc..."
-    
     # Map to musl arch name for output directory
     local musl_arch=$(map_arch_to_musl "$arch")
     
@@ -187,22 +187,21 @@ build_glibc_tool() {
     
     # Run the build
     if main "$arch"; then
-        echo "[$(date +%H:%M:%S)] Successfully built $tool for $arch"
         return 0
     else
-        echo "[$(date +%H:%M:%S)] ERROR: Failed to build $tool for $arch" >&2
         return 1
     fi
 }
 
 # Main build logic
 main() {
-    echo "==================================="
-    echo "Glibc Static Build System"
-    echo "==================================="
-    echo "Tool: $TOOL"
-    echo "Architecture: $ARCH"
-    echo "==================================="
+    echo "=============================================="
+    echo "Embedded Toolkit Build Pipeline (Glibc Static)"
+    echo "=============================================="
+    echo "Start time: $(date)"
+    echo ""
+    echo "=== Build Configuration ==="
+    echo -n "Tools: "
     
     # Get list of tools to build
     if [ "$TOOL" = "all" ]; then
@@ -210,6 +209,7 @@ main() {
     else
         TOOLS_TO_BUILD="$TOOL"
     fi
+    echo "$TOOLS_TO_BUILD"
     
     # Get list of architectures
     if [ "$ARCH" = "all" ]; then
@@ -219,34 +219,65 @@ main() {
         ARCHS_TO_BUILD="$ARCH"
     fi
     
+    # Map to musl arch names for display
+    local display_archs=""
+    for arch in $ARCHS_TO_BUILD; do
+        local musl_arch=$(map_arch_to_musl "$arch")
+        display_archs="$display_archs $musl_arch"
+    done
+    echo -n "Architectures:"
+    echo "$display_archs"
+    echo "Mode: glibc static"
+    echo "Build mode: Sequential per architecture, parallel compilation"
+    echo "Logging: true"
+    echo "=========================="
+    echo ""
+    
     # Build each tool for each architecture
     local total=0
     local success=0
     local failed=0
     
     for tool in $TOOLS_TO_BUILD; do
+        echo "=== Building $tool ==="
         for arch in $ARCHS_TO_BUILD; do
             total=$((total + 1))
-            echo
-            echo "[$(date +%H:%M:%S)] [$total] Building $tool for $arch..."
             
-            if build_glibc_tool "$tool" "$arch"; then
+            # Map to musl arch name for display
+            local musl_arch=$(map_arch_to_musl "$arch")
+            local timestamp=$(date +%Y%m%d-%H%M%S)
+            local log_file="${LOGS_DIR}/build-${tool}-${musl_arch}-${timestamp}.log"
+            
+            echo -n "[$musl_arch] Building $tool (log: $log_file)..."
+            
+            if build_glibc_tool "$tool" "$arch" > "$log_file" 2>&1; then
                 success=$((success + 1))
-                echo "[$(date +%H:%M:%S)] [$total] ✓ Successfully built $tool for $arch"
+                echo ""
+                echo "[$musl_arch] ✓ $tool built successfully"
             else
                 failed=$((failed + 1))
-                echo "[$(date +%H:%M:%S)] [$total] ✗ Failed to build $tool for $arch" >&2
+                echo ""
+                echo "[$musl_arch] ✗ $tool build failed"
+                echo "[$musl_arch] Check log: $log_file"
             fi
         done
     done
     
-    echo
-    echo "==================================="
-    echo "Build Summary"
-    echo "==================================="
-    echo "Total: $total"
+    echo ""
+    echo "=== Build Summary ==="
+    echo "Total builds: $total"
     echo "Successful: $success"
     echo "Failed: $failed"
+    echo ""
+    echo "End time: $(date)"
+    echo "=============================================="
+    
+    # Show completion message
+    if [ $failed -eq 0 ]; then
+        echo "✓ All builds completed successfully"
+    else
+        echo "✗ Some builds failed. Check logs for details."
+    fi
     
     return $failed
 }

@@ -23,11 +23,11 @@ The name "Stheno" is a playful reference - in Greek mythology, Stheno was one of
 # Build specific tool for specific architecture
 ./build strace --arch arm32v5le
 
-# Build glibc static tools (like ltrace)
-./build-glibc-static ltrace
+# Build ltrace (automatically uses glibc build system)
+./build ltrace
 
 # Build ltrace for specific architecture
-./build-glibc-static ltrace --arch x86_64
+./build ltrace --arch x86_64
 ```
 
 ## Docker Build
@@ -109,7 +109,7 @@ DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
 - **dropbear** - Lightweight SSH server/client (includes dbclient, scp, dropbearkey)
 
 ### Glibc Static Tools (new)
-- **ltrace** - Library call tracer (requires glibc for functionality)
+- **ltrace** - Library call tracer (traces dynamic library calls and signals)
 
 **Note on glibc static builds**: Due to glibc's design, "static" binaries built with glibc may still require certain runtime libraries for features like hostname resolution (NSS) and locale support. These tools are provided for environments where glibc is the standard C library.
 
@@ -145,6 +145,7 @@ TOOL:
   tcpdump     Network packet analyzer
   gdbserver   Remote debugging server
   gdb         GNU debugger
+  ltrace      Library call tracer (glibc static)
 
 OPTIONS:
   --arch ARCH Build for specific architecture
