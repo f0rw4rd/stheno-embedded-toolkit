@@ -64,6 +64,7 @@ for arg in "$@"; do
             echo "  gdb         GNU debugger"
             echo "  nmap        Network exploration and security auditing"
             echo "  dropbear    Lightweight SSH server/client (includes scp)"
+            echo "  ltrace      Library call tracer (glibc-based)"
             echo ""
             echo "OPTIONS:"
             echo "  --arch ARCH      Build for specific architecture only"
@@ -93,7 +94,7 @@ for arg in "$@"; do
             echo "  $0 strace --arch x86_64  # Build strace for x86_64 only"
             exit 0
             ;;
-        strace|busybox|busybox_nodrop|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|gdb|nmap|dropbear)
+        strace|busybox|busybox_nodrop|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|gdb|nmap|dropbear|ltrace)
             TOOLS="$arg"
             ;;
         arm32v5le|arm32v5lehf|arm32v7le|arm32v7lehf|armeb|armv6|armv7m|armv7r|\
@@ -212,16 +213,37 @@ else
     DEBUG_CMD=""
 fi
 
-# Always use unified build system
-exec docker run --rm \
-    -v "${PWD}:/build" \
-    -v sources-cache:/build/sources \
-    -v toolchains-cache:/build/toolchains \
-    -v deps-cache:/build/deps-cache \
-    $DEBUG_FLAGS \
-    -e SKIP_IF_EXISTS="${SKIP_IF_EXISTS:-true}" \
-    sthenos-musl-builder:latest \
-    $DEBUG_CMD /build/scripts/build-unified.sh \
-    --log \
-    "$TOOLS" \
-    "$ARCHITECTURES"
+# Route ltrace to glibc build system
+if [ "$TOOLS" = "ltrace" ]; then
+    # Build glibc Docker image if needed
+    if ! docker image inspect sthenos-glibc-builder >/dev/null 2>&1; then
+        echo "Building glibc Docker image..."
+        docker build -t sthenos-glibc-builder -f Dockerfile.glibc .
+    fi
+    
+    # Use glibc build system for ltrace
+    exec docker run --rm \
+        -v "${PWD}:/build" \
+        -v sources-cache:/build/sources \
+        -v toolchains-preload-cache:/build/toolchains-preload \
+        -v deps-cache:/build/deps-cache \
+        $DEBUG_FLAGS \
+        sthenos-glibc-builder:latest \
+        $DEBUG_CMD /build/scripts/build-unified-glibc.sh \
+        "$TOOLS" \
+        "$ARCHITECTURES"
+else
+    # Always use unified build system for musl tools
+    exec docker run --rm \
+        -v "${PWD}:/build" \
+        -v sources-cache:/build/sources \
+        -v toolchains-cache:/build/toolchains \
+        -v deps-cache:/build/deps-cache \
+        $DEBUG_FLAGS \
+        -e SKIP_IF_EXISTS="${SKIP_IF_EXISTS:-true}" \
+        sthenos-musl-builder:latest \
+        $DEBUG_CMD /build/scripts/build-unified.sh \
+        --log \
+        "$TOOLS" \
+        "$ARCHITECTURES"
+fi

@@ -3,7 +3,16 @@
 # Note: This is the first glibc-based static tool in the toolkit
 set -e
 
-source "${SCRIPT_DIR}/lib/common.sh"
+# Load common functions - handle both musl and glibc environments
+if [ -f "${SCRIPT_DIR}/lib/common.sh" ]; then
+    source "${SCRIPT_DIR}/lib/common.sh"
+elif [ -f "${SCRIPT_DIR}/preload/lib/common.sh" ]; then
+    source "${SCRIPT_DIR}/preload/lib/common.sh"
+else
+    # Basic logging if common.sh not found
+    log() { echo "[$(date +%H:%M:%S)] $*"; }
+    log_error() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
+fi
 
 TOOL_NAME="ltrace"
 TOOL_VERSION="0.7.3-git"  # Using git version for latest fixes
@@ -13,7 +22,7 @@ download_source() {
     local arch="$1"
     
     if [ ! -f "sources/${TOOL_NAME}-${TOOL_VERSION}.tar.gz" ]; then
-        log "Downloading ltrace source..."
+        echo "[$(date +%H:%M:%S)] Downloading ltrace source..."
         
         # Clone from git for latest version with fixes
         cd sources
@@ -32,53 +41,62 @@ download_source() {
     fi
     
     # Extract
-    log "Extracting ltrace source..."
+    echo "[$(date +%H:%M:%S)] Extracting ltrace source..."
     cd "$BUILD_DIR"
+    rm -rf "${TOOL_NAME}-${TOOL_VERSION}"
     tar xzf "$SOURCES_DIR/${TOOL_NAME}-${TOOL_VERSION}.tar.gz"
-    mv ltrace "${TOOL_NAME}-${TOOL_VERSION}"
+    if [ -d "ltrace" ] && [ ! -d "${TOOL_NAME}-${TOOL_VERSION}" ]; then
+        mv ltrace "${TOOL_NAME}-${TOOL_VERSION}"
+    fi
 }
 
 configure_build() {
     local arch="$1"
     local build_dir="$2"
     
-    cd "$build_dir"
+    # The source was extracted to a subdirectory
+    cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
     
     # Run autogen if needed
     if [ ! -f "configure" ]; then
-        log "Running autogen.sh..."
-        ./autogen.sh
+        echo "[$(date +%H:%M:%S)] Running autogen.sh..."
+        # Use system autotools, not the ones from toolchain
+        PATH="/usr/bin:/bin:$PATH" sh ./autogen.sh || {
+            echo "[$(date +%H:%M:%S)] ERROR: autogen.sh failed" >&2
+            return 1
+        }
     fi
     
-    # Get toolchain paths (using Bootlin naming convention)
-    local toolchain_name="${TOOLCHAIN_PREFIX}--glibc--stable-2024.02-1"
-    local toolchain_dir="/build/toolchains-glibc-static/${toolchain_name}"
-    local sysroot="${toolchain_dir}/${TOOLCHAIN_PREFIX}/sysroot"
+    # Get toolchain paths
+    local toolchain_name="${CC%-gcc}"
+    local toolchain_dir="/build/toolchains-preload/${toolchain_name}"
+    local sysroot="${toolchain_dir}/sysroot"
     
     # Build static dependencies first if needed
     build_static_deps "$arch"
     
+    # Return to ltrace source directory after building deps
+    cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
+    
     # Configure for static build
     # Note: We disable libunwind to simplify the build
     CFLAGS="-static -O2 -g -I${DEPS_PREFIX}/include -I${sysroot}/usr/include" \
-    CXXFLAGS="-static -O2 -g -I${DEPS_PREFIX}/include -I${sysroot}/usr/include" \
     LDFLAGS="-static -L${DEPS_PREFIX}/lib -L${sysroot}/usr/lib" \
     CPPFLAGS="-I${DEPS_PREFIX}/include -I${sysroot}/usr/include" \
     ./configure \
-        --host="${TOOLCHAIN_PREFIX}" \
+        --host="${toolchain_name}" \
         --prefix=/usr \
         --sysconfdir=/etc \
         --disable-shared \
         --enable-static \
         --disable-werror \
         --without-libunwind \
-        --with-elfutils=no \
+        --disable-demangle \
         --disable-selinux \
-        CC="${toolchain_name}-gcc" \
-        CXX="${toolchain_name}-g++" \
-        AR="${toolchain_name}-ar" \
-        STRIP="${toolchain_name}-strip" || {
-        log_error "Configure failed"
+        CC="${CC}" \
+        AR="${AR}" \
+        STRIP="${STRIP}" || {
+        echo "[$(date +%H:%M:%S)] ERROR: Configure failed" >&2
         return 1
     }
 }
@@ -87,12 +105,30 @@ build_static_deps() {
     local arch="$1"
     
     # Check if we already built deps
-    if [ -f "${DEPS_PREFIX}/lib/libelf.a" ]; then
-        log "Static dependencies already built"
+    if [ -f "${DEPS_PREFIX}/lib/libelf.a" ] && [ -f "${DEPS_PREFIX}/lib/libz.a" ]; then
+        echo "[$(date +%H:%M:%S)] Static dependencies already built"
         return 0
     fi
     
-    log "Building static libelf..."
+    echo "[$(date +%H:%M:%S)] Building static libelf..."
+    
+    # Build zlib first
+    cd "$BUILD_DIR"
+    if [ ! -f "$SOURCES_DIR/zlib-1.3.tar.gz" ]; then
+        wget -O "$SOURCES_DIR/zlib-1.3.1.tar.gz" \
+            "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"
+    fi
+    
+    tar xf "$SOURCES_DIR/zlib-1.3.1.tar.gz"
+    cd zlib-1.3.1
+    
+    # Configure and build zlib
+    CC="${CC}" CFLAGS="-O2 -g" ./configure --prefix="${DEPS_PREFIX}" --static || {
+        echo "[$(date +%H:%M:%S)] ERROR: zlib configure failed" >&2
+        return 1
+    }
+    make -j$(nproc)
+    make install
     
     # Download and build libelf
     cd "$BUILD_DIR"
@@ -104,11 +140,11 @@ build_static_deps() {
     tar xf "$SOURCES_DIR/elfutils-0.189.tar.bz2"
     cd elfutils-0.189
     
-    # Configure elfutils for static build
-    local toolchain_name="${TOOLCHAIN_PREFIX}--glibc--stable-2024.02-1"
-    CFLAGS="-O2 -g" \
+    # Configure elfutils for static build with zlib
+    CFLAGS="-O2 -g -I${DEPS_PREFIX}/include" \
+    LDFLAGS="-L${DEPS_PREFIX}/lib" \
     ./configure \
-        --host="${TOOLCHAIN_PREFIX}" \
+        --host="${toolchain_name}" \
         --prefix="${DEPS_PREFIX}" \
         --enable-static \
         --disable-shared \
@@ -116,9 +152,9 @@ build_static_deps() {
         --disable-debuginfod \
         --without-bzlib \
         --without-lzma \
-        CC="${toolchain_name}-gcc" \
-        AR="${toolchain_name}-ar" || {
-        log_error "elfutils configure failed"
+        CC="${CC}" \
+        AR="${AR}" || {
+        echo "[$(date +%H:%M:%S)] ERROR: elfutils configure failed" >&2
         return 1
     }
     
@@ -135,11 +171,24 @@ build_tool() {
     local arch="$1"
     local build_dir="$2"
     
-    cd "$build_dir"
+    cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
     
-    # Build with explicit static flags
-    make LDFLAGS="-static -L${DEPS_PREFIX}/lib" || {
-        log_error "Build failed"
+    # Build everything first
+    make -j$(nproc) || true  # Allow it to fail at linking stage
+    
+    # Check if we have the necessary files
+    if [ ! -f "main.o" ] || [ ! -f ".libs/libltrace.a" ]; then
+        echo "[$(date +%H:%M:%S)] ERROR: Required object files not built" >&2
+        return 1
+    fi
+    
+    # Remove demangle.o from libltrace.a to avoid C++ dependency
+    ${AR} d .libs/libltrace.a demangle.o || true
+    
+    # Manually link ltrace statically without C++ dependencies
+    ${CC} -static -o ltrace main.o .libs/libltrace.a sysdeps/.libs/libos.a \
+        -L${DEPS_PREFIX}/lib -lelf -lz -lpthread -lm || {
+        echo "[$(date +%H:%M:%S)] ERROR: Manual linking failed" >&2
         return 1
     }
 }
@@ -149,21 +198,56 @@ install_tool() {
     local build_dir="$2"
     local install_dir="$3"
     
-    cd "$build_dir"
+    cd "$BUILD_DIR/${TOOL_NAME}-${TOOL_VERSION}"
     
     # Install the binary
     install -D -m 755 ltrace "$install_dir/ltrace"
     
     # Verify it's static
     if ! file "$install_dir/ltrace" | grep -q "statically linked"; then
-        log_error "Binary is not statically linked!"
+        echo "[$(date +%H:%M:%S)] ERROR: Binary is not statically linked!" >&2
+        # Show what it's linked against
+        ldd "$install_dir/ltrace" || true
         return 1
     fi
     
     # Strip the binary
-    local toolchain_name="${TOOLCHAIN_PREFIX}--glibc--stable-2024.02-1"
-    "${toolchain_name}-strip" "$install_dir/ltrace" || true
+    "${STRIP}" "$install_dir/ltrace" || true
 }
 
-# Main build
-main "$@"
+# Main build function
+main() {
+    local arch="$1"
+    
+    # Create build directory
+    local build_name="${TOOL_NAME}-${TOOL_VERSION}-${arch}"
+    rm -rf "${BUILD_DIR}/${build_name}"
+    mkdir -p "${BUILD_DIR}/${build_name}"
+    
+    # Download source
+    download_source "$arch"
+    
+    # Configure
+    echo "[$(date +%H:%M:%S)] Configuring ${TOOL_NAME} for ${arch}..."
+    if ! configure_build "$arch" "${BUILD_DIR}/${build_name}"; then
+        echo "[$(date +%H:%M:%S)] ERROR: Configuration failed" >&2
+        return 1
+    fi
+    
+    # Build
+    echo "[$(date +%H:%M:%S)] Building ${TOOL_NAME} for ${arch}..."
+    if ! build_tool "$arch" "${BUILD_DIR}/${build_name}"; then
+        echo "[$(date +%H:%M:%S)] ERROR: Build failed" >&2
+        return 1
+    fi
+    
+    # Install
+    echo "[$(date +%H:%M:%S)] Installing ${TOOL_NAME} for ${arch}..."
+    if ! install_tool "$arch" "${BUILD_DIR}/${build_name}" "${OUTPUT_DIR}/${arch}"; then
+        echo "[$(date +%H:%M:%S)] ERROR: Installation failed" >&2
+        return 1
+    fi
+    
+    echo "[$(date +%H:%M:%S)] ${TOOL_NAME} built successfully for ${arch}"
+    return 0
+}

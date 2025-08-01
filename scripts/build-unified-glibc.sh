@@ -6,19 +6,27 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Load common functions
-source "$SCRIPT_DIR/lib/common.sh"
+# Load common functions - check both locations
+if [ -f "$SCRIPT_DIR/lib/common.sh" ]; then
+    source "$SCRIPT_DIR/lib/common.sh"
+elif [ -f "$SCRIPT_DIR/preload/lib/common.sh" ]; then
+    source "$SCRIPT_DIR/preload/lib/common.sh"
+else
+    # Define basic logging functions if common.sh not found
+    log() { echo "[$(date +%H:%M:%S)] $*"; }
+    log_error() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
+fi
 
-# Override paths for glibc builds
-TOOLCHAINS_DIR="/build/toolchains-glibc-static"
+# Override paths for glibc builds (reusing preload infrastructure)
+TOOLCHAINS_DIR="/build/toolchains-preload"
 OUTPUT_DIR="/build/output-glibc-static"
-BUILD_DIR="/build/build-glibc-static"
+BUILD_DIR="/build/tmp/build-glibc-static"
 SOURCES_DIR="/build/sources"
-DEPS_PREFIX="/build/deps"
+DEPS_PREFIX="/build/deps-glibc-static"
 LOGS_DIR="/build/logs-glibc-static"
 
-# Create directories
-mkdir -p "$BUILD_DIR" "$SOURCES_DIR" "$DEPS_PREFIX" "$LOGS_DIR"
+# Create directories at runtime
+mkdir -p "$BUILD_DIR" "$SOURCES_DIR" "$DEPS_PREFIX" "$LOGS_DIR" "$OUTPUT_DIR"
 
 # Parse arguments
 TOOL="${1:-all}"
@@ -45,24 +53,36 @@ setup_arch_glibc() {
         riscv64)     TOOLCHAIN_PREFIX="riscv64-lp64d" ;;
         s390x)       TOOLCHAIN_PREFIX="s390x-z13" ;;
         *) 
-            log_error "Unsupported architecture for glibc: $arch"
+            echo "[$(date +%H:%M:%S)] ERROR: Unsupported architecture for glibc: $arch" >&2
             return 1
             ;;
     esac
     
+    # Map to actual toolchain names in the image
+    case "$arch" in
+        x86_64)      TOOLCHAIN_NAME="x86_64-unknown-linux-gnu" ;;
+        aarch64)     TOOLCHAIN_NAME="aarch64-unknown-linux-gnu" ;;
+        arm32v7le)   TOOLCHAIN_NAME="arm-cortex_a7-linux-gnueabihf" ;;
+        i486)        TOOLCHAIN_NAME="i486-unknown-linux-gnu" ;;
+        mips64le)    TOOLCHAIN_NAME="mips64el-unknown-linux-gnu" ;;
+        ppc64le)     TOOLCHAIN_NAME="powerpc64le-unknown-linux-gnu" ;;
+        riscv64)     TOOLCHAIN_NAME="riscv64-unknown-linux-gnu" ;;
+        s390x)       TOOLCHAIN_NAME="s390x-unknown-linux-gnu" ;;
+    esac
+    
     # Check if toolchain exists
-    local toolchain_dir="${TOOLCHAINS_DIR}/${TOOLCHAIN_PREFIX}--glibc--stable-2024.02-1"
+    local toolchain_dir="${TOOLCHAINS_DIR}/${TOOLCHAIN_NAME}"
     if [ ! -d "$toolchain_dir" ]; then
-        log_error "Toolchain not found for $arch at $toolchain_dir"
+        echo "[$(date +%H:%M:%S)] ERROR: Toolchain not found for $arch at $toolchain_dir" >&2
         return 1
     fi
     
     # Set up environment
     export PATH="${toolchain_dir}/bin:$PATH"
-    export CC="${TOOLCHAIN_PREFIX}--glibc--stable-2024.02-1-gcc"
-    export CXX="${TOOLCHAIN_PREFIX}--glibc--stable-2024.02-1-g++"
-    export AR="${TOOLCHAIN_PREFIX}--glibc--stable-2024.02-1-ar"
-    export STRIP="${TOOLCHAIN_PREFIX}--glibc--stable-2024.02-1-strip"
+    export CC="${TOOLCHAIN_NAME}-gcc"
+    export CXX="${TOOLCHAIN_NAME}-g++"
+    export AR="${TOOLCHAIN_NAME}-ar"
+    export STRIP="${TOOLCHAIN_NAME}-strip"
     export TOOLCHAIN_PREFIX
     
     # Export for build scripts
@@ -74,7 +94,7 @@ build_glibc_tool() {
     local tool="$1"
     local arch="$2"
     
-    log "Building $tool for $arch with glibc..."
+    echo "[$(date +%H:%M:%S)] Building $tool for $arch with glibc..."
     
     # Create architecture output directory
     local arch_output="${OUTPUT_DIR}/${arch}"
@@ -88,7 +108,7 @@ build_glibc_tool() {
     # Build the tool
     local build_script="${SCRIPT_DIR}/tools/build-${tool}.sh"
     if [ ! -f "$build_script" ]; then
-        log_error "Build script not found: $build_script"
+        echo "[$(date +%H:%M:%S)] ERROR: Build script not found: $build_script" >&2
         return 1
     fi
     
@@ -97,22 +117,22 @@ build_glibc_tool() {
     
     # Run the build
     if main "$arch"; then
-        log "Successfully built $tool for $arch"
+        echo "[$(date +%H:%M:%S)] Successfully built $tool for $arch"
         return 0
     else
-        log_error "Failed to build $tool for $arch"
+        echo "[$(date +%H:%M:%S)] ERROR: Failed to build $tool for $arch" >&2
         return 1
     fi
 }
 
 # Main build logic
 main() {
-    log "==================================="
-    log "Glibc Static Build System"
-    log "==================================="
-    log "Tool: $TOOL"
-    log "Architecture: $ARCH"
-    log "==================================="
+    echo "==================================="
+    echo "Glibc Static Build System"
+    echo "==================================="
+    echo "Tool: $TOOL"
+    echo "Architecture: $ARCH"
+    echo "==================================="
     
     # Get list of tools to build
     if [ "$TOOL" = "all" ]; then
@@ -138,25 +158,25 @@ main() {
         for arch in $ARCHS_TO_BUILD; do
             total=$((total + 1))
             echo
-            log "[$total] Building $tool for $arch..."
+            echo "[$(date +%H:%M:%S)] [$total] Building $tool for $arch..."
             
             if build_glibc_tool "$tool" "$arch"; then
                 success=$((success + 1))
-                log "[$total] ✓ Successfully built $tool for $arch"
+                echo "[$(date +%H:%M:%S)] [$total] ✓ Successfully built $tool for $arch"
             else
                 failed=$((failed + 1))
-                log_error "[$total] ✗ Failed to build $tool for $arch"
+                echo "[$(date +%H:%M:%S)] [$total] ✗ Failed to build $tool for $arch" >&2
             fi
         done
     done
     
     echo
-    log "==================================="
-    log "Build Summary"
-    log "==================================="
-    log "Total: $total"
-    log "Successful: $success"
-    log "Failed: $failed"
+    echo "==================================="
+    echo "Build Summary"
+    echo "==================================="
+    echo "Total: $total"
+    echo "Successful: $success"
+    echo "Failed: $failed"
     
     return $failed
 }
