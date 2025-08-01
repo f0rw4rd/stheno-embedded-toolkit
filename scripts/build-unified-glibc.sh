@@ -42,23 +42,40 @@ get_glibc_tools() {
 setup_arch_glibc() {
     local arch="$1"
     
-    # Map architecture to toolchain prefix
+    # Map architecture to toolchain prefix (using same mapping as preload)
     case "$arch" in
         x86_64)      TOOLCHAIN_PREFIX="x86_64" ;;
         aarch64)     TOOLCHAIN_PREFIX="aarch64" ;;
-        arm32v7le)   TOOLCHAIN_PREFIX="armv7-eabihf" ;;
-        i486)        TOOLCHAIN_PREFIX="x86-i686" ;;
-        mips64le)    TOOLCHAIN_PREFIX="mips64el-n32" ;;
-        ppc64le)     TOOLCHAIN_PREFIX="powerpc64le-power8" ;;
-        riscv64)     TOOLCHAIN_PREFIX="riscv64-lp64d" ;;
-        s390x)       TOOLCHAIN_PREFIX="s390x-z13" ;;
+        arm32v7le)   TOOLCHAIN_PREFIX="arm-cortex_a7-linux-gnueabihf" ;;
+        i486)        TOOLCHAIN_PREFIX="i486" ;;
+        mips64le)    TOOLCHAIN_PREFIX="mips64el" ;;
+        ppc64le)     TOOLCHAIN_PREFIX="powerpc64le" ;;
+        riscv64)     TOOLCHAIN_PREFIX="riscv64" ;;
+        s390x)       TOOLCHAIN_PREFIX="s390x" ;;
+        aarch64be)   TOOLCHAIN_PREFIX="aarch64be" ;;
+        mips64)      TOOLCHAIN_PREFIX="mips64" ;;
+        armv5)       TOOLCHAIN_PREFIX="armv5" ;;
+        armv6)       TOOLCHAIN_PREFIX="armv6" ;;
+        ppc32)       TOOLCHAIN_PREFIX="powerpc" ;;
+        sparc64)     TOOLCHAIN_PREFIX="sparc64" ;;
+        sh4)         TOOLCHAIN_PREFIX="sh4" ;;
+        mips32)      TOOLCHAIN_PREFIX="mips32" ;;
+        mips32el)    TOOLCHAIN_PREFIX="mips32el" ;;
+        riscv32)     TOOLCHAIN_PREFIX="riscv32" ;;
+        microblazeel) TOOLCHAIN_PREFIX="microblazeel" ;;
+        microblazebe) TOOLCHAIN_PREFIX="microblazebe" ;;
+        nios2)       TOOLCHAIN_PREFIX="nios2" ;;
+        openrisc)    TOOLCHAIN_PREFIX="openrisc" ;;
+        arcle)       TOOLCHAIN_PREFIX="arcle" ;;
+        xtensa)      TOOLCHAIN_PREFIX="xtensa" ;;
+        m68k)        TOOLCHAIN_PREFIX="m68k" ;;
         *) 
             echo "[$(date +%H:%M:%S)] ERROR: Unsupported architecture for glibc: $arch" >&2
             return 1
             ;;
     esac
     
-    # Map to actual toolchain names in the image
+    # Map to actual toolchain names in the image (same as preload)
     case "$arch" in
         x86_64)      TOOLCHAIN_NAME="x86_64-unknown-linux-gnu" ;;
         aarch64)     TOOLCHAIN_NAME="aarch64-unknown-linux-gnu" ;;
@@ -68,6 +85,24 @@ setup_arch_glibc() {
         ppc64le)     TOOLCHAIN_NAME="powerpc64le-unknown-linux-gnu" ;;
         riscv64)     TOOLCHAIN_NAME="riscv64-unknown-linux-gnu" ;;
         s390x)       TOOLCHAIN_NAME="s390x-unknown-linux-gnu" ;;
+        aarch64be)   TOOLCHAIN_NAME="aarch64be-unknown-linux-gnu" ;;
+        mips64)      TOOLCHAIN_NAME="mips64-unknown-linux-gnu" ;;
+        armv5)       TOOLCHAIN_NAME="armv5-unknown-linux-gnueabi" ;;
+        armv6)       TOOLCHAIN_NAME="armv6-unknown-linux-gnueabihf" ;;
+        ppc32)       TOOLCHAIN_NAME="powerpc-unknown-linux-gnu" ;;
+        sparc64)     TOOLCHAIN_NAME="sparc64-unknown-linux-gnu" ;;
+        sh4)         TOOLCHAIN_NAME="sh4-unknown-linux-gnu" ;;
+        mips32)      TOOLCHAIN_NAME="mips32-unknown-linux-gnu" ;;
+        mips32el)    TOOLCHAIN_NAME="mips32el-unknown-linux-gnu" ;;
+        riscv32)     TOOLCHAIN_NAME="riscv32-unknown-linux-gnu" ;;
+        microblazeel) TOOLCHAIN_NAME="microblazeel-unknown-linux-gnu" ;;
+        microblazebe) TOOLCHAIN_NAME="microblazebe-unknown-linux-gnu" ;;
+        nios2)       TOOLCHAIN_NAME="nios2-unknown-linux-gnu" ;;
+        openrisc)    TOOLCHAIN_NAME="openrisc-unknown-linux-gnu" ;;
+        arcle)       TOOLCHAIN_NAME="arcle-unknown-linux-gnu" ;;
+        xtensa)      TOOLCHAIN_NAME="xtensa-unknown-linux-gnu" ;;
+        m68k)        TOOLCHAIN_NAME="m68k-unknown-linux-gnu" ;;
+        *)           TOOLCHAIN_NAME="${arch}-unknown-linux-gnu" ;;
     esac
     
     # Check if toolchain exists
@@ -147,8 +182,8 @@ main() {
     
     # Get list of architectures
     if [ "$ARCH" = "all" ]; then
-        # Limited architectures for glibc static builds
-        ARCHS_TO_BUILD="x86_64 aarch64 arm32v7le i486"
+        # All architectures supported by preload toolchains
+        ARCHS_TO_BUILD="x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el riscv32 microblazeel microblazebe nios2 openrisc arcle xtensa m68k"
     else
         ARCHS_TO_BUILD="$ARCH"
     fi
