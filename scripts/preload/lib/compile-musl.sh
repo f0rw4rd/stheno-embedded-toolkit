@@ -80,7 +80,6 @@ build_preload_library_musl() {
     
     # Compile
     {
-        echo "=== Building $lib for $arch with musl ==="
         echo "Date: $(date)"
         echo "Source: $source"
         echo "Compiler: $compiler"
@@ -89,7 +88,6 @@ build_preload_library_musl() {
         echo
         
         # Compile to object file
-        echo "=== Compilation ==="
         $compiler $cflags -c "$source" -o "${lib}.o" 2>&1 || {
             echo "Compilation failed"
             cd /
@@ -99,7 +97,6 @@ build_preload_library_musl() {
         
         # Link to shared library
         echo
-        echo "=== Linking ==="
         $compiler $ldflags -o "${lib}.so" "${lib}.o" -ldl 2>&1 || {
             echo "Linking failed"
             cd /
@@ -109,14 +106,12 @@ build_preload_library_musl() {
         
         # Strip symbols
         echo
-        echo "=== Stripping ==="
         $strip_cmd "${lib}.so" 2>&1 || {
             echo "Warning: Strip failed (non-fatal)"
         }
         
         # Show library info
         echo
-        echo "=== Library Info ==="
         file "${lib}.so"
         echo
         readelf -d "${lib}.so" | grep NEEDED || true

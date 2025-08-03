@@ -54,10 +54,7 @@ get_compile_flags() {
             base_flags="$base_flags -mno-unaligned-access"
             ;;
         armv7r)
-            # ARMv7-R with minimal FPU settings for compatibility
             base_flags="$base_flags -march=armv7-r -mtune=cortex-r4 -mthumb"
-            # Use vfpv3-d16 which is the minimal FPU for ARMv7-R cores
-            # Changed to hard float to match toolchain ABI
             base_flags="$base_flags -mfpu=vfpv3-d16 -mfloat-abi=hard"
             ;;
         aarch64)

@@ -37,10 +37,10 @@ Options:
   -h, --help         Show this help message
 
 Examples:
-  $0 strace arm32v5le              # Build strace for ARM
-  $0 all ix86le                     # Build all tools for x86
-  $0 gdbserver all --mode embedded # Build gdbserver for all archs with embedded optimization
-  $0 busybox all                   # Build busybox for all architectures
+  $0 strace arm32v5le
+  $0 all ix86le
+  $0 gdbserver all --mode embedded
+  $0 busybox all
 
 EOF
     exit 0
@@ -155,13 +155,10 @@ do_build() {
     return $result
 }
 
-echo "=== Build Configuration ==="
 echo "Tools: ${TOOLS_TO_BUILD[@]}"
-echo "Architectures: ${ARCHS_TO_BUILD[@]}"
 echo "Mode: $MODE"
 echo "Build mode: Sequential per architecture, parallel compilation"
 echo "Logging: $LOG_ENABLED"
-echo "=========================="
 echo
 
 TOTAL_BUILDS=$((${#TOOLS_TO_BUILD[@]} * ${#ARCHS_TO_BUILD[@]}))
@@ -170,7 +167,6 @@ FAILED=0
 START_TIME=$(date +%s)
 
 for tool in "${TOOLS_TO_BUILD[@]}"; do
-    echo "=== Building $tool ==="
     
     for arch in "${ARCHS_TO_BUILD[@]}"; do
         do_build "$tool" "$arch" || true
@@ -191,14 +187,12 @@ BUILD_TIME=$((END_TIME - START_TIME))
 BUILD_MINS=$((BUILD_TIME / 60))
 BUILD_SECS=$((BUILD_TIME % 60))
 
-echo "=== Build Summary ==="
 echo "Total builds: $TOTAL_BUILDS"
 echo "Completed: $COMPLETED"
 echo "Failed: $FAILED"
 echo "Build time: ${BUILD_MINS}m ${BUILD_SECS}s"
 echo
 
-echo "=== Built Binaries ==="
 for arch in "${ARCHS_TO_BUILD[@]}"; do
     if ls /build/output/$arch/* >/dev/null 2>&1; then
         echo "$arch:"
@@ -208,7 +202,6 @@ done
 
 if [ $FAILED -gt 0 ]; then
     echo
-    echo "=== Failed Builds ==="
     for tool in "${TOOLS_TO_BUILD[@]}"; do
         for arch in "${ARCHS_TO_BUILD[@]}"; do
             if [ ! -f "/build/output/$arch/$tool" ]; then

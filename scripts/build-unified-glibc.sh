@@ -1,28 +1,22 @@
 #!/bin/bash
-# Unified build system for glibc static tools
 set -e
 
-# Base directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Load common functions and logging
 if [ -f "$SCRIPT_DIR/lib/logging.sh" ]; then
     source "$SCRIPT_DIR/lib/logging.sh"
 else
-    # Fallback to basic logging if not found
     log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
     log_error() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2; }
 fi
 
-# Load common functions - check both locations
 if [ -f "$SCRIPT_DIR/lib/common.sh" ]; then
     source "$SCRIPT_DIR/lib/common.sh"
 elif [ -f "$SCRIPT_DIR/preload/lib/common.sh" ]; then
     source "$SCRIPT_DIR/preload/lib/common.sh"
 fi
 
-# Override paths for glibc builds (reusing preload infrastructure)
 TOOLCHAINS_DIR="/build/toolchains-preload"
 OUTPUT_DIR="/build/output"
 BUILD_DIR="/build/tmp/build-glibc-static"
@@ -30,20 +24,16 @@ SOURCES_DIR="/build/sources"
 DEPS_PREFIX="/build/deps-glibc-static"
 LOGS_DIR="/build/logs-glibc-static"
 
-# Create directories at runtime
 mkdir -p "$BUILD_DIR" "$SOURCES_DIR" "$DEPS_PREFIX" "$LOGS_DIR" "$OUTPUT_DIR"
 
-# Parse arguments
 TOOL="${1:-all}"
 ARCH="${2:-all}"
 DEBUG="${DEBUG:-}"
 
-# Get list of supported tools
 get_glibc_tools() {
-    echo "ltrace"  # Currently only ltrace
+    echo "ltrace"
 }
 
-# Map glibc arch names to musl arch names for consistent output
 map_arch_to_musl() {
     local arch="$1"
     case "$arch" in
@@ -62,11 +52,9 @@ map_arch_to_musl() {
     esac
 }
 
-# Setup architecture with glibc toolchain
 setup_arch_glibc() {
     local arch="$1"
     
-    # Map musl arch names to glibc arch names if needed
     case "$arch" in
         arm32v5le)   arch="armv5" ;;
         arm32v7le)   arch="arm32v7le" ;;
@@ -77,7 +65,6 @@ setup_arch_glibc() {
         aarch64_be)  arch="aarch64be" ;;
     esac
     
-    # Map architecture to toolchain prefix (using same mapping as preload)
     case "$arch" in
         x86_64)      TOOLCHAIN_PREFIX="x86_64" ;;
         aarch64)     TOOLCHAIN_PREFIX="aarch64" ;;
@@ -110,7 +97,6 @@ setup_arch_glibc() {
             ;;
     esac
     
-    # Map to actual toolchain names in the image (same as preload)
     case "$arch" in
         x86_64)      TOOLCHAIN_NAME="x86_64-unknown-linux-gnu" ;;
         aarch64)     TOOLCHAIN_NAME="aarch64-unknown-linux-gnu" ;;
@@ -140,14 +126,12 @@ setup_arch_glibc() {
         *)           TOOLCHAIN_NAME="${arch}-unknown-linux-gnu" ;;
     esac
     
-    # Check if toolchain exists
     local toolchain_dir="${TOOLCHAINS_DIR}/${TOOLCHAIN_NAME}"
     if [ ! -d "$toolchain_dir" ]; then
         echo "[$(date +%H:%M:%S)] ERROR: Toolchain not found for $arch at $toolchain_dir" >&2
         return 1
     fi
     
-    # Set up environment
     export PATH="${toolchain_dir}/bin:$PATH"
     export CC="${TOOLCHAIN_NAME}-gcc"
     export CXX="${TOOLCHAIN_NAME}-g++"
@@ -155,42 +139,33 @@ setup_arch_glibc() {
     export STRIP="${TOOLCHAIN_NAME}-strip"
     export TOOLCHAIN_PREFIX
     
-    # Export for build scripts
     export SCRIPT_DIR TOOLCHAINS_DIR OUTPUT_DIR BUILD_DIR SOURCES_DIR DEPS_PREFIX LOGS_DIR
 }
 
-# Build a single tool
 build_glibc_tool() {
     local tool="$1"
     local arch="$2"
     
-    # Map to musl arch name for output directory
     local musl_arch=$(map_arch_to_musl "$arch")
     
-    # Create architecture output directory
     local arch_output="${OUTPUT_DIR}/${musl_arch}"
     mkdir -p "$arch_output"
     
-    # Set up architecture
     if ! setup_arch_glibc "$arch"; then
         return 1
     fi
     
-    # Set per-architecture deps path
     export DEPS_PREFIX="${DEPS_PREFIX}/${arch}"
     mkdir -p "${DEPS_PREFIX}/lib" "${DEPS_PREFIX}/include"
     
-    # Build the tool
     local build_script="${SCRIPT_DIR}/tools/build-${tool}.sh"
     if [ ! -f "$build_script" ]; then
         echo "[$(date +%H:%M:%S)] ERROR: Build script not found: $build_script" >&2
         return 1
     fi
     
-    # Source the build script (it will use our exported variables)
     source "$build_script"
     
-    # Run the build
     if main "$arch"; then
         return 0
     else
@@ -198,17 +173,12 @@ build_glibc_tool() {
     fi
 }
 
-# Main build logic
 main() {
-    echo "=============================================="
     echo "Embedded Toolkit Build Pipeline (Glibc Static)"
-    echo "=============================================="
     echo "Start time: $(date)"
     echo ""
-    echo "=== Build Configuration ==="
     echo -n "Tools: "
     
-    # Get list of tools to build
     if [ "$TOOL" = "all" ]; then
         TOOLS_TO_BUILD=$(get_glibc_tools)
     else
@@ -216,15 +186,12 @@ main() {
     fi
     echo "$TOOLS_TO_BUILD"
     
-    # Get list of architectures
     if [ "$ARCH" = "all" ]; then
-        # All architectures supported by preload toolchains
         ARCHS_TO_BUILD="x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el riscv32 microblazeel microblazebe nios2 openrisc arcle xtensa m68k"
     else
         ARCHS_TO_BUILD="$ARCH"
     fi
     
-    # Map to musl arch names for display
     local display_archs=""
     for arch in $ARCHS_TO_BUILD; do
         local musl_arch=$(map_arch_to_musl "$arch")
@@ -235,20 +202,16 @@ main() {
     echo "Mode: glibc static"
     echo "Build mode: Sequential per architecture, parallel compilation"
     echo "Logging: true"
-    echo "=========================="
     echo ""
     
-    # Build each tool for each architecture
     local total=0
     local success=0
     local failed=0
     
     for tool in $TOOLS_TO_BUILD; do
-        echo "=== Building $tool ==="
         for arch in $ARCHS_TO_BUILD; do
             total=$((total + 1))
             
-            # Map to musl arch name for display
             local musl_arch=$(map_arch_to_musl "$arch")
             local timestamp=$(date +%Y%m%d-%H%M%S)
             local log_file="${LOGS_DIR}/build-${tool}-${musl_arch}-${timestamp}.log"
@@ -269,15 +232,12 @@ main() {
     done
     
     echo ""
-    echo "=== Build Summary ==="
     echo "Total builds: $total"
     echo "Successful: $success"
     echo "Failed: $failed"
     echo ""
     echo "End time: $(date)"
-    echo "=============================================="
     
-    # Show completion message
     if [ $failed -eq 0 ]; then
         echo "✓ All builds completed successfully"
     else
@@ -287,5 +247,4 @@ main() {
     return $failed
 }
 
-# Run main
 main

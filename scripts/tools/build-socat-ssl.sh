@@ -127,7 +127,6 @@ EOF
 
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <architecture>"
-    echo "Architectures: arm32v5le arm32v5lehf arm32v7le arm32v7lehf mips32v2le mips32v2be ppc32be ix86le x86_64 aarch64 mips64le ppc64le"
     exit 1
 fi
 

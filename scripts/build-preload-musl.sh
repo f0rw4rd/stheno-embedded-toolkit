@@ -43,32 +43,20 @@ if [ "$ARCHS_TO_BUILD" = "all" ]; then
     ARCHS_TO_BUILD="x86_64 aarch64 aarch64_be arm32v5le arm32v5lehf arm32v7le arm32v7lehf armeb armv6 armv7m armv7r i486 ix86le m68k microblaze microblazeel mips32v2be mips32v2le mips64 mips64le or1k ppc32be powerpcle powerpc64 ppc64le riscv32 riscv64 s390x sh2 sh2eb sh4 sh4eb"
 fi
 
-echo "==================================="
-echo "Preload Library Build with Musl"
-echo "==================================="
-echo "Libraries: $LIBS_TO_BUILD"
-echo "Architectures: $ARCHS_TO_BUILD"
-echo "==================================="
-echo
-
-# Function to build a library
 build_preload_musl() {
     local lib="$1"
     local arch="$2"
     local output_dir="/build/output-preload/musl/$arch"
     local source="/build/preload-libs/${lib}.c"
     
-    # Create output directory
     mkdir -p "$output_dir"
     
-    # Check if already built
     if [ -f "$output_dir/${lib}.so" ]; then
         local size=$(ls -lh "$output_dir/${lib}.so" 2>/dev/null | awk '{print $5}')
         echo "[$arch] Already built: ${lib}.so ($size)"
         return 0
     fi
     
-    # Get toolchain prefix
     local prefix=""
     case "$arch" in
         x86_64)      prefix="x86_64-linux-musl" ;;
@@ -106,11 +94,9 @@ build_preload_musl() {
         *)           echo "[$arch] Unknown architecture"; return 1 ;;
     esac
     
-    # Check if toolchain exists
     local toolchain_dir="/build/toolchains/${prefix}-cross"
     if [ ! -d "$toolchain_dir" ]; then
         echo "[$arch] Toolchain not found, building it first..."
-        # Build a dummy tool to create the toolchain
         cd /build
         /scripts/build-unified.sh strace "$arch" >/dev/null 2>&1 || true
         
@@ -130,23 +116,17 @@ build_preload_musl() {
     
     echo "[$arch] Building ${lib}.so..."
     
-    # Compilation flags
     local cflags="-fPIC -O2 -Wall -D_GNU_SOURCE -fno-strict-aliasing"
     local ldflags="-shared -Wl,-soname,${lib}.so"
     
-    # Create temp directory
     local build_dir="/tmp/build-${lib}-${arch}-$$"
     mkdir -p "$build_dir"
     cd "$build_dir"
     
-    # Compile
     if $compiler $cflags -c "$source" -o "${lib}.o" 2>&1; then
-        # Link
         if $compiler $ldflags -o "${lib}.so" "${lib}.o" -ldl 2>&1; then
-            # Strip
             $strip_cmd "${lib}.so" 2>/dev/null || true
             
-            # Copy to output
             cp "${lib}.so" "$output_dir/" || {
                 echo "[$arch] Failed to copy library"
                 cd /
@@ -154,7 +134,6 @@ build_preload_musl() {
                 return 1
             }
             
-            # Show info
             local size=$(ls -lh "$output_dir/${lib}.so" 2>/dev/null | awk '{print $5}')
             echo "[$arch] Successfully built: ${lib}.so ($size)"
             
@@ -173,7 +152,6 @@ build_preload_musl() {
     return 1
 }
 
-# Build each library for each architecture
 TOTAL=0
 SUCCESS=0
 FAILED=0
@@ -190,9 +168,6 @@ for lib in $LIBS_TO_BUILD; do
     done
 done
 
-echo "==================================="
-echo "Build Summary"
-echo "==================================="
 echo "Total: $TOTAL"
 echo "Successful: $SUCCESS"
 echo "Failed: $FAILED"

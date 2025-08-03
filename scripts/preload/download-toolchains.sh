@@ -1,11 +1,9 @@
 #!/bin/bash
-# Download pre-built glibc toolchains for preload library builds
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
-# Bootlin toolchain URLs
 declare -A TOOLCHAIN_URLS=(
     ["x86_64"]="https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--glibc--stable-2024.02-1.tar.bz2"
     ["aarch64"]="https://toolchains.bootlin.com/downloads/releases/toolchains/aarch64/tarballs/aarch64--glibc--stable-2024.02-1.tar.bz2"
@@ -47,7 +45,6 @@ download_toolchain() {
     local target_dir=""
     local temp_dir=""
     
-    # Cleanup function
     cleanup() {
         if [ -n "$temp_dir" ] && [ -d "$temp_dir" ]; then
             cd /
@@ -56,7 +53,6 @@ download_toolchain() {
     }
     trap cleanup EXIT
     
-    # Map architecture to toolchain directory name
     case "$arch" in
         x86_64)     target_dir="$toolchain_dir/x86_64-unknown-linux-gnu" ;;
         aarch64)    target_dir="$toolchain_dir/aarch64-unknown-linux-gnu" ;;
@@ -84,7 +80,6 @@ download_toolchain() {
         m68k)       target_dir="$toolchain_dir/m68k-unknown-linux-gnu" ;;
     esac
     
-    # Check if already downloaded
     if [ -d "$target_dir/bin" ]; then
         log "Toolchain for $arch already exists"
         return 0
@@ -92,7 +87,6 @@ download_toolchain() {
     
     log "Downloading toolchain for $arch..."
     
-    # Create temp directory with unique name for parallel downloads
     temp_dir="/tmp/toolchain-${arch}-$$-$(date +%s%N)"
     mkdir -p "$temp_dir" || {
         log_error "Failed to create temp directory: $temp_dir"
@@ -103,7 +97,6 @@ download_toolchain() {
         return 1
     }
     
-    # Download with retries (quiet mode, no progress bar)
     local max_retries=3
     local retry_count=0
     local download_success=false
@@ -126,13 +119,11 @@ download_toolchain() {
         return 1
     fi
     
-    # Verify download
     if [ ! -f "$filename" ]; then
         log_error "Downloaded file not found: $filename"
         return 1
     fi
     
-    # Extract (handle both .tar.bz2 and .tar.xz)
     log "Extracting toolchain for $arch..."
     if [[ "$filename" == *.tar.xz ]]; then
         if ! tar xJf "$filename"; then
@@ -150,17 +141,13 @@ download_toolchain() {
         fi
     fi
     
-    # Find the extracted directory
     local extracted_dir=$(find . -maxdepth 1 -type d -name "*" | grep -v "^\.$" | head -1)
     
-    # Move to target location
     mkdir -p "$(dirname "$target_dir")"
     mv "$extracted_dir" "$target_dir"
     
-    # Create compatibility symlinks
     cd "$target_dir/bin"
     
-    # Helper function to create toolchain symlinks
     create_symlinks() {
         local src_prefix="$1"
         local dst_prefix="$2"
@@ -180,7 +167,6 @@ download_toolchain() {
         done
     }
     
-    # Architecture to Bootlin prefix mapping
     case "$arch" in
         x86_64)       create_symlinks "x86_64-buildroot-linux-gnu" "x86_64-unknown-linux-gnu" true ;;
         aarch64)      create_symlinks "aarch64-buildroot-linux-gnu" "aarch64-unknown-linux-gnu" true ;;
@@ -208,18 +194,13 @@ download_toolchain() {
         m68k)         create_symlinks "m68k-buildroot-linux-gnu" "m68k-unknown-linux-gnu" true ;;
     esac
     
-    # Cleanup
     log "Toolchain for $arch installed successfully"
     return 0
 }
 
-# Main - only run if executed directly
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
-    echo "==================================="
     echo "Downloading Preload Toolchains"
-    echo "==================================="
 
-    # Download all defined toolchains
     for arch in "${!TOOLCHAIN_URLS[@]}"; do
         download_toolchain "$arch" || {
             log_error "Failed to download toolchain for $arch"

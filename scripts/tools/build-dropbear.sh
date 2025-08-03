@@ -54,34 +54,6 @@ build_dropbear() {
 /* Dropbear custom options for embedded systems */
 
 /* Algorithms - disable weaker ones to save space */
-#define DROPBEAR_AES128 1
-#define DROPBEAR_AES256 1
-#define DROPBEAR_3DES 0
-#define DROPBEAR_ENABLE_CTR_MODE 1
-#define DROPBEAR_ENABLE_CBC_MODE 0
-
-#define DROPBEAR_SHA1_96_HMAC 0
-#define DROPBEAR_SHA2_256_HMAC 1
-#define DROPBEAR_SHA2_512_HMAC 1
-
-#define DROPBEAR_X11FWD 0
-#define DROPBEAR_SVR_AGENTFWD 0
-#define DROPBEAR_CLI_AGENTFWD 0
-#define DROPBEAR_SVR_LOCALTCPFWD 1
-#define DROPBEAR_CLI_LOCALTCPFWD 1
-#define DROPBEAR_SVR_REMOTETCPFWD 1
-#define DROPBEAR_CLI_REMOTETCPFWD 1
-
-#define DROPBEAR_SCP 1
-
-#define DROPBEAR_DH_GROUP14_SHA256 1
-#define DROPBEAR_DH_GROUP14_SHA1 0
-#define DROPBEAR_DH_GROUP16 0
-
-#define DROPBEAR_DEFAULT_RSA_SIZE 2048
-#define DROPBEAR_DSS 0
-
-#define DROPBEAR_SMALL_CODE 1
 EOF
     
     make -j$(nproc) PROGRAMS="dropbear dbclient dropbearkey scp" STATIC=1 || {
@@ -115,10 +87,8 @@ EOF
     return 0
 }
 
-# Main
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <architecture>"
-    echo "Architectures: arm32v5le arm32v5lehf arm32v7le arm32v7lehf mips32v2le mips32v2be ppc32be ix86le x86_64 aarch64 mips64le ppc64le"
     exit 1
 fi
 

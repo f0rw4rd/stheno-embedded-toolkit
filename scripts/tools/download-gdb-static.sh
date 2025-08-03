@@ -1,65 +1,48 @@
 #!/bin/bash
-# Download static GDB builds from gdb-static project
 set -e
 
-# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
-# GDB-static release info
 GDB_VERSION="${GDB_VERSION:-v16.3-static}"
 GITHUB_REPO="guyush1/gdb-static"
 BASE_URL="https://github.com/${GITHUB_REPO}/releases/download/${GDB_VERSION}"
 
-# Architecture mappings for gdb-static project
-# gdb-static only supports: aarch64, arm, i686, mips, mipsel, mips64, mips64el, powerpc, powerpc64, s390x, x86_64
 declare -A GDB_ARCH_MAP=(
-    # x86_64 - SUPPORTED
     ["x86_64"]="x86_64"
     ["amd64"]="x86_64"
     
-    # ARM 64-bit - SUPPORTED
     ["aarch64"]="aarch64"
     ["arm64"]="aarch64"
     
-    # x86 32-bit - SUPPORTED (maps to i686)
     ["i686"]="i686"
     ["i386"]="i686"
     ["i486"]="i686"
     ["i586"]="i686"
     ["ix86le"]="i686"
     
-    # ARM 32-bit - PARTIALLY SUPPORTED (only some variants map to arm)
     ["armv7l"]="arm"
     ["armv7"]="arm"
     ["arm32v7le"]="arm"
     ["arm32v7lehf"]="arm"
-    # NOT SUPPORTED: arm32v5le, arm32v5lehf, armeb, armv6, armv7m, armv7r
     
-    # PowerPC - PARTIALLY SUPPORTED
     ["powerpc"]="powerpc"
     ["ppc"]="powerpc"
-    ["ppc32be"]="powerpc"  # Map ppc32be to powerpc
+    ["ppc32be"]="powerpc"
     ["powerpc64"]="powerpc64"
     ["ppc64"]="powerpc64"
-    # NOT SUPPORTED: ppc64le (little-endian), powerpcle
     
-    # MIPS - PARTIALLY SUPPORTED
     ["mips"]="mips"
-    ["mips32v2be"]="mips"  # Map to standard mips
+    ["mips32v2be"]="mips"
     ["mipsel"]="mipsel"
-    ["mips32v2le"]="mipsel"  # Map to mipsel
+    ["mips32v2le"]="mipsel"
     ["mips64"]="mips64"
     ["mips64el"]="mips64el"
-    ["mips64le"]="mips64el"  # Alias
-    # NOT SUPPORTED: mipsn32, mipsn32el, mips64n32, mips64n32el
+    ["mips64le"]="mips64el"
     
-    # Others - PARTIALLY SUPPORTED
     ["s390x"]="s390x"
-    # NOT SUPPORTED: sh2, sh2eb, sh4, sh4eb, microblaze, microblazeel, or1k, m68k
 )
 
-# Download and extract GDB variant (slim or full)
 download_gdb_variant() {
     local arch=$1
     local variant=$2  # "slim" or "full"
@@ -69,7 +52,6 @@ download_gdb_variant() {
     if [ -z "$gdb_arch" ]; then
         echo "[gdb-static] Architecture $arch not supported by gdb-static project"
         
-        # Provide specific guidance for unsupported architectures
         case "$arch" in
             ppc64le|powerpc64le|powerpcle)
                 echo "[gdb-static] Note: Only big-endian PowerPC (powerpc, powerpc64) is available, not little-endian variants"
@@ -99,28 +81,23 @@ download_gdb_variant() {
         return 1
     fi
     
-    # Create variant directory
     local variant_dir="$output_dir/gdb-$variant"
     mkdir -p "$variant_dir"
     
-    # Check if already downloaded
     if [ -f "$variant_dir/.download-complete" ]; then
         echo "[gdb-static] GDB $variant already downloaded for $arch"
         return 0
     fi
     
-    # Construct filename
     local filename="gdb-static-${variant}-${gdb_arch}.tar.gz"
     local url="${BASE_URL}/${filename}"
     local temp_dir="/tmp/gdb-static-${variant}-${arch}-$$"
     
     echo "[gdb-static] Downloading $variant version from: $url"
     
-    # Create temp directory
     mkdir -p "$temp_dir"
     cd "$temp_dir"
     
-    # Download the archive
     if ! wget -q --show-progress "$url" -O "$filename"; then
         echo "[gdb-static] Failed to download GDB $variant for $arch"
         echo "[gdb-static] URL: $url"
@@ -131,7 +108,6 @@ download_gdb_variant() {
     
     echo "[gdb-static] Extracting GDB $variant..."
     
-    # Extract all binaries
     if ! tar xzf "$filename"; then
         echo "[gdb-static] Failed to extract GDB archive"
         cd /
@@ -139,7 +115,6 @@ download_gdb_variant() {
         return 1
     fi
     
-    # Move all extracted binaries to variant directory
     echo "[gdb-static] Installing binaries to $variant_dir..."
     
     local installed_count=0
@@ -154,10 +129,8 @@ download_gdb_variant() {
         fi
     done
     
-    # Create completion marker
     touch "$variant_dir/.download-complete"
     
-    # Clean up
     cd /
     rm -rf "$temp_dir"
     
@@ -165,7 +138,6 @@ download_gdb_variant() {
     return 0
 }
 
-# Download and extract GDB for a specific architecture
 download_gdb_static() {
     local arch=$1
     local output_dir="${2:-/build/output/$arch}"
@@ -173,10 +145,8 @@ download_gdb_static() {
     
     echo "[gdb-static] Downloading static GDB for $arch (variant: $variant)..."
     
-    # Create output directory
     mkdir -p "$output_dir"
     
-    # Download requested variants
     local success=0
     case "$variant" in
         slim)
@@ -196,7 +166,6 @@ download_gdb_static() {
     esac
     
     if [ $success -eq 1 ]; then
-        # Create symlinks in main directory for backward compatibility
         if [ -f "$output_dir/gdb-full/gdb" ]; then
             ln -sf gdb-full/gdb "$output_dir/gdb"
         elif [ -f "$output_dir/gdb-slim/gdb" ]; then
@@ -209,7 +178,6 @@ download_gdb_static() {
             ln -sf gdb-slim/gdbserver "$output_dir/gdbserver"
         fi
         
-        # Show what was installed
         echo "[gdb-static] Installation completed for $arch"
         echo "[gdb-static] Directory structure:"
         
@@ -231,7 +199,6 @@ download_gdb_static() {
         
         echo "  - Symlinks in $output_dir/ for compatibility"
         
-        # Clean up any dynamically linked binaries
         echo "[gdb-static] Checking for and removing dynamically linked binaries..."
         local removed_count=0
         for dir in "$output_dir/gdb-slim" "$output_dir/gdb-full"; do
@@ -259,14 +226,12 @@ download_gdb_static() {
     return 0
 }
 
-# Clean up dynamically linked binaries
 cleanup_dynamic_binaries() {
     local arch="${1:-all}"
     echo "[gdb-static] Cleaning up dynamically linked GDB binaries..."
     
     local removed_count=0
     if [ "$arch" = "all" ]; then
-        # Clean all architectures
         for arch_dir in /build/output/*/; do
             if [ -d "$arch_dir" ]; then
                 for dir in "$arch_dir/gdb-slim" "$arch_dir/gdb-full"; do
@@ -283,7 +248,6 @@ cleanup_dynamic_binaries() {
             fi
         done
     else
-        # Clean specific architecture
         local output_dir="/build/output/$arch"
         for dir in "$output_dir/gdb-slim" "$output_dir/gdb-full"; do
             if [ -d "$dir" ]; then
@@ -301,12 +265,10 @@ cleanup_dynamic_binaries() {
     echo "[gdb-static] Removed $removed_count dynamically linked binaries"
 }
 
-# List available GDB versions
 list_available_versions() {
     echo "[gdb-static] Checking available GDB versions..."
     echo "[gdb-static] Note: This queries GitHub API and may be rate-limited"
     
-    # Get releases from GitHub API
     local releases_url="https://api.github.com/repos/${GITHUB_REPO}/releases"
     
     if command -v curl >/dev/null 2>&1; then
@@ -319,7 +281,6 @@ list_available_versions() {
     fi
 }
 
-# List files in a release
 list_release_files() {
     local version="${1:-$GDB_VERSION}"
     echo "[gdb-static] Listing files in release $version..."
@@ -336,7 +297,6 @@ list_release_files() {
     fi
 }
 
-# Main function
 main() {
     local action="${1:-download}"
     local arch="${2:-}"

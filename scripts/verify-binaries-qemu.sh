@@ -1,24 +1,17 @@
 #!/bin/bash
 
-# Don't exit on errors - we want to test all binaries
 set -uo pipefail
-
-# Script to verify binaries using QEMU user-mode emulation
-
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Default values
 OUTPUT_DIR="${OUTPUT_DIR:-output}"
 ARCH_FILTER=""
 TOOL_FILTER=""
 VERBOSE=false
 
-# Architecture to QEMU binary mapping
 declare -A QEMU_MAP=(
     ["arm32v5le"]="qemu-arm-static"
     ["arm32v5lehf"]="qemu-arm-static"
@@ -58,7 +51,6 @@ declare -A QEMU_MAP=(
     ["mips64"]="qemu-mips64-static"
 )
 
-# Test commands for each tool
 declare -A TEST_COMMANDS=(
     ["bash"]="--version"
     ["busybox"]="--help"
@@ -92,15 +84,14 @@ Options:
     -h, --help          Show this help message
 
 Examples:
-    $0                          # Verify all binaries
-    $0 --arch x86_64           # Verify only x86_64 binaries
-    $0 --tool strace           # Verify only strace binaries
-    $0 --arch aarch64 --verbose # Verify aarch64 binaries with verbose output
+    $0
+    $0 --arch x86_64
+    $0 --tool strace
+    $0 --arch aarch64 --verbose
 
 EOF
 }
 
-# Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         -a|--arch)
@@ -127,7 +118,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check if QEMU is installed
 check_qemu_installed() {
     local arch="$1"
     local qemu_bin="${QEMU_MAP[$arch]}"
@@ -145,7 +135,6 @@ check_qemu_installed() {
     return 0
 }
 
-# Get native architecture
 get_native_arch() {
     case "$(uname -m)" in
         x86_64) echo "x86_64" ;;
@@ -157,11 +146,9 @@ get_native_arch() {
     esac
 }
 
-# Check if binary is statically linked
 check_static() {
     local binary="$1"
     
-    # Follow symlinks to get the actual file
     if [[ -L "$binary" ]]; then
         binary=$(readlink -f "$binary")
     fi
@@ -173,31 +160,26 @@ check_static() {
     fi
 }
 
-# Test binary execution
 test_binary() {
     local binary="$1"
     local arch="$2"
     local tool="$3"
     local native_arch=$(get_native_arch)
     
-    # Get test command for this tool
     local test_cmd="${TEST_COMMANDS[$tool]}"
     if [[ -z "$test_cmd" ]]; then
         test_cmd="--version"
     fi
     
-    # Execute binary
     local output
     local exit_code
     
     if [[ "$arch" == "$native_arch" ]] || [[ "$native_arch" == "unknown" ]]; then
-        # Run natively
         if $VERBOSE; then
             echo -e "${BLUE}Running natively: $binary $test_cmd${NC}"
         fi
         output=$(timeout 5 "$binary" $test_cmd 2>&1) && exit_code=$? || exit_code=$?
     else
-        # Run with QEMU
         local qemu_bin="${QEMU_MAP[$arch]}"
         if [[ -z "$qemu_bin" ]] || ! command -v "$qemu_bin" &> /dev/null; then
             echo -e "${YELLOW}SKIP${NC} (QEMU not available)"
@@ -231,7 +213,6 @@ test_binary() {
     fi
 }
 
-# Main verification function
 verify_binaries() {
     local total=0
     local passed=0
@@ -242,7 +223,6 @@ verify_binaries() {
     echo -e "Native architecture: $(get_native_arch)"
     echo
     
-    # Find all architectures
     local architectures=()
     if [[ -n "$ARCH_FILTER" ]]; then
         architectures=("$ARCH_FILTER")
@@ -254,7 +234,6 @@ verify_binaries() {
         done
     fi
     
-    # Verify binaries
     for arch in "${architectures[@]}"; do
         local arch_dir="$OUTPUT_DIR/$arch"
         
@@ -265,16 +244,13 @@ verify_binaries() {
         
         echo -e "${BLUE}Architecture: $arch${NC}"
         
-        # Check QEMU availability for this architecture
         if [[ "$(get_native_arch)" != "$arch" ]] && ! check_qemu_installed "$arch"; then
             echo -e "${YELLOW}Skipping $arch - QEMU not available${NC}"
             echo
             continue
         fi
         
-        # Find all binaries in this architecture
         for binary in "$arch_dir"/*; do
-            # Skip directories but follow symlinks to check if they're executable
             if [[ -d "$binary" && ! -L "$binary" ]]; then
                 continue
             fi
@@ -282,7 +258,6 @@ verify_binaries() {
             if [[ -x "$binary" ]]; then
                 local tool=$(basename "$binary")
                 
-                # Apply tool filter if specified
                 if [[ -n "$TOOL_FILTER" ]] && [[ "$tool" != "$TOOL_FILTER" ]]; then
                     continue
                 fi
@@ -290,20 +265,18 @@ verify_binaries() {
                 printf "  %-20s " "$tool:"
                 total=$((total + 1))
                 
-                # Check if statically linked
                 if ! check_static "$binary"; then
                     echo -e "${RED}FAIL${NC} (not statically linked)"
                     failed=$((failed + 1))
                     continue
                 fi
                 
-                # Test execution
                 test_binary "$binary" "$arch" "$tool"
                 case $? in
                     0) passed=$((passed + 1)) ;;
                     1) failed=$((failed + 1)) ;;
                     2) skipped=$((skipped + 1)) ;;
-                    3) failed=$((failed + 1)) ;;  # Timeout counts as failure
+                    3) failed=$((failed + 1)) ;;
                 esac
             fi
         done
@@ -311,7 +284,6 @@ verify_binaries() {
         echo
     done
     
-    # Summary
     echo -e "${BLUE}=== Summary ===${NC}"
     echo "Total binaries tested: $total"
     echo -e "Passed: ${GREEN}$passed${NC}"
@@ -325,7 +297,6 @@ verify_binaries() {
     fi
 }
 
-# Install QEMU packages hint
 show_qemu_install_hint() {
     echo -e "${YELLOW}=== QEMU Installation Hint ===${NC}"
     echo "To test all architectures, install QEMU user-mode emulation:"
@@ -341,14 +312,12 @@ show_qemu_install_hint() {
     echo
 }
 
-# Main execution
 main() {
     if [[ ! -d "$OUTPUT_DIR" ]]; then
         echo -e "${RED}Error: Output directory $OUTPUT_DIR not found${NC}"
         exit 1
     fi
     
-    # Check if any QEMU is installed
     local qemu_found=false
     for qemu in "${QEMU_MAP[@]}"; do
         if command -v "$qemu" &> /dev/null; then

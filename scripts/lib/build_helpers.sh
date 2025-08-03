@@ -68,7 +68,6 @@ install_binary() {
         return 1
     }
     
-    # Report size
     local size=$(ls -lh "/build/output/$arch/$dest_name" | awk '{print $5}')
     log_tool "$tool_name" "Built successfully for $arch ($size)"
     

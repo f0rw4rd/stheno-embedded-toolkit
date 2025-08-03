@@ -1,12 +1,10 @@
 #!/bin/bash
-# Script to download all toolchains in parallel
 set -e
 
 TOOLCHAIN_DIR="/build/toolchains"
 mkdir -p "$TOOLCHAIN_DIR"
 cd "$TOOLCHAIN_DIR"
 
-# Function to download and extract a toolchain
 download_toolchain() {
     local url=$1
     local target_dir=$2
@@ -17,7 +15,6 @@ download_toolchain() {
     
     echo "Downloading $target_dir..."
     
-    # Download with retries
     while [ $retry_count -lt $max_retries ]; do
         if wget -q --tries=2 --timeout=30 "$url" -O "$filename"; then
             download_success=true
@@ -36,7 +33,6 @@ download_toolchain() {
         return 1
     fi
     
-    # Extract and move
     if tar xzf "$filename"; then
         local extracted_dir="${filename%.tgz}"
         extracted_dir="${extracted_dir%-cross}"
@@ -52,10 +48,8 @@ download_toolchain() {
     fi
 }
 
-# Export function for parallel execution
 export -f download_toolchain
 
-# Define all toolchains
 declare -a TOOLCHAINS=(
     "https://musl.cc/arm-linux-musleabi-cross.tgz arm32v5le"
     "https://musl.cc/arm-linux-musleabihf-cross.tgz arm32v5lehf"
@@ -96,11 +90,9 @@ declare -a TOOLCHAINS=(
 
 echo "Downloading ${#TOOLCHAINS[@]} toolchains in parallel..."
 
-# Create a temporary directory for job tracking
 JOB_DIR="/tmp/musl-toolchain-jobs-$$"
 mkdir -p "$JOB_DIR"
 
-# Function to download with job tracking
 download_with_tracking() {
     local line="$1"
     local url=$(echo "$line" | cut -d' ' -f1)
@@ -114,19 +106,15 @@ download_with_tracking() {
     fi
 }
 
-# Export function for parallel execution
 export -f download_with_tracking
 export JOB_DIR
 
-# Use GNU parallel if available, otherwise use xargs
 if command -v parallel >/dev/null 2>&1; then
     printf '%s\n' "${TOOLCHAINS[@]}" | parallel -j 8 download_with_tracking {}
 else
-    # Use xargs with -P for parallel processing
     printf '%s\n' "${TOOLCHAINS[@]}" | xargs -P 8 -I {} bash -c 'download_with_tracking "$@"' _ {}
 fi
 
-# Count results
 TOTAL=0
 SUCCESS=0
 FAILED=0
@@ -150,13 +138,10 @@ for line in "${TOOLCHAINS[@]}"; do
     fi
 done
 
-# Cleanup job directory
 rm -rf "$JOB_DIR"
 
 echo
-echo "==================================="
 echo "Download Summary"
-echo "==================================="
 echo "Total: $TOTAL"
 echo "Successful: $SUCCESS"
 echo "Failed: $FAILED"
@@ -166,7 +151,6 @@ if [ "$FAILED" -gt 0 ]; then
     echo "Retrying failed downloads sequentially..."
     echo
     
-    # Convert to array and retry
     IFS='|' read -ra FAILED_ARRAY <<< "$FAILED_TOOLCHAINS"
     RETRY_SUCCESS=0
     
@@ -185,14 +169,11 @@ if [ "$FAILED" -gt 0 ]; then
         fi
     done
     
-    # Recalculate final results
     FINAL_FAILED=$((FAILED - RETRY_SUCCESS))
     FINAL_SUCCESS=$((SUCCESS + RETRY_SUCCESS))
     
     echo
-    echo "==================================="
     echo "Final Download Summary"
-    echo "==================================="
     echo "Total: $TOTAL"
     echo "Successful: $FINAL_SUCCESS"
     echo "Failed: $FINAL_FAILED"
@@ -204,7 +185,6 @@ if [ "$FAILED" -gt 0 ]; then
     fi
 fi
 
-# Special case: arm32v7lehf is a copy of arm32v7le
 if [ -d "arm32v7le" ] && [ ! -d "arm32v7lehf" ]; then
     cp -a arm32v7le arm32v7lehf
     echo "✓ arm32v7lehf (copied from arm32v7le)"
