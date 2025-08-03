@@ -20,12 +20,12 @@ build_dependency_generic() {
     local cache_dir="$DEPS_CACHE_DIR/$arch/$dep_name-$version"
     
     if $install_func check "$cache_dir"; then
-        log_info "Using cached $dep_name $version for $arch from $cache_dir"
+        log_info "Using cached $dep_name $version for $arch from $cache_dir" >&2
         echo "$cache_dir"
         return 0
     fi
     
-    log_info "Building $dep_name $version for $arch..."
+    log_info "Building $dep_name $version for $arch..." >&2
     
     setup_arch "$arch" || return 1
     download_source "$dep_name" "$version" "$url" "$extract_name" || return 1
