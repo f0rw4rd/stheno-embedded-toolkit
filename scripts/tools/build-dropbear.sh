@@ -1,8 +1,6 @@
 #!/bin/bash
-# Build script for dropbear SSH server/client
 set -e
 
-# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 source "$SCRIPT_DIR/../lib/build_flags.sh"
@@ -15,37 +13,24 @@ build_dropbear() {
     local build_dir="/tmp/dropbear-build-${arch}-$$"
     local TOOL_NAME="dropbear"
     
-    # Check if binary already exists
     if check_binary_exists "$arch" "dropbear"; then
         return 0
     fi
     
     echo "[dropbear] Building for $arch..."
     
-    # Setup architecture
     setup_arch "$arch" || return 1
     
-    # Download source
     download_source "dropbear" "$DROPBEAR_VERSION" "$DROPBEAR_URL" || return 1
     
-    # Create build directory and extract
     mkdir -p "$build_dir"
     cd "$build_dir"
     tar xf /build/sources/dropbear-${DROPBEAR_VERSION}.tar.bz2
     cd dropbear-${DROPBEAR_VERSION}
     
-    # Get build flags
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
-    # Configure dropbear
-    # --disable-zlib: removes zlib dependency (slight performance hit but smaller)
-    # --disable-syslog: smaller binary, logs to stderr instead
-    # --disable-lastlog: don't update lastlog
-    # --disable-utmp: don't update utmp/wtmp
-    # --disable-utmpx: don't update utmpx/wtmpx
-    # --disable-wtmp: don't update wtmp
-    # --disable-wtmpx: don't update wtmpx
     CFLAGS="$cflags" \
     LDFLAGS="$ldflags" \
     ./configure \

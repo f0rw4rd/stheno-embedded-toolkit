@@ -117,7 +117,6 @@ create_cross_cache() {
     local cache_file=$2
     
     cat > "$cache_file" << EOF
-# Cross-compilation cache for $arch
 ac_cv_func_malloc_0_nonnull=yes
 ac_cv_func_realloc_0_nonnull=yes
 ac_cv_func_mmap_fixed_mapped=yes
@@ -148,37 +147,30 @@ build_tool_generic() {
     local build_func=$4
     local install_func=$5
     
-    # Check if binary already exists
     if check_binary_exists "$arch" "$tool_name"; then
         return 0
     fi
     
-    # Setup architecture
     if ! setup_arch "$arch"; then
         log_tool_error "$tool_name" "Unknown architecture: $arch"
         return 1
     fi
     
-    # Ensure toolchain exists
     if ! download_toolchain "$arch"; then
         return 1
     fi
     
-    # Create build directory
     local build_dir
     build_dir=$(create_build_dir "$tool_name" "$arch")
     cd "$build_dir" || return 1
     
-    # Set up error handling to cleanup on failure
     trap "cleanup_build_dir '$build_dir'" EXIT
     
-    # Download source if needed
     if ! download_source; then
         log_tool_error "$tool_name" "Failed to download source"
         return 1
     fi
     
-    # Get build flags
     local cflags=$(get_compile_flags "$arch" "$tool_name")
     local ldflags=$(get_link_flags "$arch")
     export CFLAGS="$cflags"
@@ -190,25 +182,21 @@ build_tool_generic() {
     export STRIP="${CROSS_COMPILE}strip"
     export NM="${CROSS_COMPILE}nm"
     
-    # Configure
     if ! $configure_func "$arch"; then
         log_tool_error "$tool_name" "Configuration failed for $arch"
         return 1
     fi
     
-    # Build
     if ! $build_func "$arch"; then
         log_tool_error "$tool_name" "Build failed for $arch"
         return 1
     fi
     
-    # Install
     if ! $install_func "$arch"; then
         log_tool_error "$tool_name" "Installation failed for $arch"
         return 1
     fi
     
-    # Remove trap and cleanup
     trap - EXIT
     cleanup_build_dir "$build_dir"
     

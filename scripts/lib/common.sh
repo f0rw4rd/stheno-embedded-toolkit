@@ -30,7 +30,6 @@ setup_arch() {
         arm32v5lehf)
             CROSS_COMPILE="arm-linux-musleabihf-"
             HOST="arm-linux-musleabihf"
-            # ARMv5TE with VFP for hard-float
             CFLAGS_ARCH="-march=armv5te+fp -mfpu=vfp -mfloat-abi=hard -marm"
             CONFIG_ARCH="arm"
             ;;
@@ -70,7 +69,6 @@ setup_arch() {
             CFLAGS_ARCH="-march=i686 -mtune=generic"
             CONFIG_ARCH="i386"
             ;;
-        # 64-bit architectures
         x86_64)
             CROSS_COMPILE="x86_64-linux-musl-"
             HOST="x86_64-linux-musl"
@@ -95,7 +93,6 @@ setup_arch() {
             CFLAGS_ARCH=""
             CONFIG_ARCH="powerpc64"
             ;;
-        # Additional ARM variants
         armeb)
             CROSS_COMPILE="armeb-linux-musleabi-"
             HOST="armeb-linux-musleabi"
@@ -120,7 +117,6 @@ setup_arch() {
             CFLAGS_ARCH="-march=armv7-r"
             CONFIG_ARCH="arm"
             ;;
-        # Additional MIPS variants
         mipsn32)
             CROSS_COMPILE="mips-linux-musln32sf-"
             HOST="mips-linux-musln32sf"
@@ -145,7 +141,6 @@ setup_arch() {
             CFLAGS_ARCH="-mabi=n32"
             CONFIG_ARCH="mips64"
             ;;
-        # PowerPC variants
         powerpc64)
             CROSS_COMPILE="powerpc64-linux-musl-"
             HOST="powerpc64-linux-musl"
@@ -158,7 +153,6 @@ setup_arch() {
             CFLAGS_ARCH=""
             CONFIG_ARCH="powerpc"
             ;;
-        # Other architectures
         microblaze)
             CROSS_COMPILE="microblaze-linux-musl-"
             HOST="microblaze-linux-musl"
@@ -213,14 +207,12 @@ setup_arch() {
             CFLAGS_ARCH=""
             CONFIG_ARCH="s390"
             ;;
-        # x86 variants
         i486)
             CROSS_COMPILE="i486-linux-musl-"
             HOST="i486-linux-musl"
             CFLAGS_ARCH="-march=i486 -mtune=generic"
             CONFIG_ARCH="i386"
             ;;
-        # RISC-V
         riscv32)
             CROSS_COMPILE="riscv32-linux-musl-"
             HOST="riscv32-linux-musl"
@@ -233,7 +225,6 @@ setup_arch() {
             CFLAGS_ARCH=""
             CONFIG_ARCH="riscv64"
             ;;
-        # Additional architectures
         aarch64_be)
             CROSS_COMPILE="aarch64_be-linux-musl-"
             HOST="aarch64_be-linux-musl"
@@ -252,10 +243,8 @@ setup_arch() {
             ;;
     esac
     
-    # Use architecture name directly for toolchain directory
     local toolchain_dir="$arch"
     
-    # Check if toolchain exists, download if needed
     if [ ! -d "/build/toolchains/$toolchain_dir/bin" ]; then
         echo "Toolchain for $arch not found, downloading..."
         download_toolchain "$arch" || {
@@ -264,15 +253,12 @@ setup_arch() {
         }
     fi
     
-    # Export minimal toolchain variables only (don't export CFLAGS/LDFLAGS here)
-    # Only add to PATH if not already there
     if [[ ":$PATH:" != *":/build/toolchains/$toolchain_dir/bin:"* ]]; then
         export PATH="/build/toolchains/$toolchain_dir/bin:$PATH"
     fi
     export HOST
     export CROSS_COMPILE
     export CONFIG_ARCH
-    # Export individual tool variables but NOT CFLAGS/LDFLAGS
     export CC="${CROSS_COMPILE}gcc"
     export CXX="${CROSS_COMPILE}g++"
     export AR="${CROSS_COMPILE}ar"
@@ -280,22 +266,18 @@ setup_arch() {
     export RANLIB="${CROSS_COMPILE}ranlib"
     export LD="${CROSS_COMPILE}ld"
     
-    # Test if the compiler works
     if ! $CC --version >/dev/null 2>&1; then
         echo "Warning: Compiler $CC not found or not working for $arch"
         echo "Toolchain may need to be downloaded or is incompatible"
     fi
     
-    # Export architecture-specific flags separately (not in CFLAGS)
     export CFLAGS_ARCH
     
-    # Create output directory
     mkdir -p /build/output/$arch
     
     return 0
 }
 
-# Check if binary already exists
 check_binary_exists() {
     local arch=$1
     local binary=$2
@@ -309,16 +291,13 @@ check_binary_exists() {
     return 1
 }
 
-# Download and extract source
 download_source() {
     local name=$1
     local version=$2
     local url=$3
     
-    # Ensure sources directory exists
     mkdir -p /build/sources
     
-    # Download if needed
     local filename=$(basename "$url")
     if [ ! -f "/build/sources/$filename" ]; then
         echo "Downloading $name $version..."
@@ -329,6 +308,5 @@ download_source() {
         fi
     fi
     
-    # Return success
     return 0
 }

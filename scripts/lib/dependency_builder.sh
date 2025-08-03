@@ -153,7 +153,6 @@ install_openssl() {
     make install_sw
 }
 
-# Wrapper for OpenSSL
 build_openssl_cached() {
     local arch=$1
     local version="${2:-1.1.1w}"
@@ -169,13 +168,11 @@ build_openssl_cached() {
         install_openssl
 }
 
-# libpcap specific functions
 configure_libpcap() {
     local arch=$1
     local build_dir=$2
     local cache_dir=$3
     
-    # libpcap doesn't need PIC for static builds
     export CFLAGS="$CFLAGS -ffunction-sections -fdata-sections"
     
     ./configure \
@@ -212,7 +209,6 @@ install_libpcap() {
     make install
 }
 
-# Wrapper for libpcap
 build_libpcap_cached() {
     local arch=$1
     local version="${2:-1.10.4}"
@@ -228,7 +224,6 @@ build_libpcap_cached() {
         install_libpcap
 }
 
-# zlib specific functions
 configure_zlib() {
     local arch=$1
     local build_dir=$2
@@ -261,7 +256,6 @@ install_zlib() {
     make install
 }
 
-# Wrapper for zlib
 build_zlib_cached() {
     local arch=$1
     local version="${2:-1.3}"
@@ -277,7 +271,6 @@ build_zlib_cached() {
         install_zlib
 }
 
-# ncurses specific functions
 configure_ncurses() {
     local arch=$1
     local build_dir=$2
@@ -326,7 +319,6 @@ install_ncurses() {
     make install
 }
 
-# Wrapper for ncurses
 build_ncurses_cached() {
     local arch=$1
     local version="${2:-6.4}"
@@ -342,13 +334,11 @@ build_ncurses_cached() {
         install_ncurses
 }
 
-# readline specific functions
 configure_readline() {
     local arch=$1
     local build_dir=$2
     local cache_dir=$3
     
-    # Get ncurses first
     local ncurses_dir
     ncurses_dir=$(build_ncurses_cached "$arch") || return 1
     
@@ -383,7 +373,6 @@ install_readline() {
     make install
 }
 
-# Wrapper for readline
 build_readline_cached() {
     local arch=$1
     local version="${2:-8.2}"

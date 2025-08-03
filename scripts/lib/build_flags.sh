@@ -1,7 +1,5 @@
 #!/bin/bash
-# Optimized build flags for embedded systems
 
-# Get architecture family
 get_arch_family() {
     local arch=$1
     case "$arch" in
@@ -19,31 +17,23 @@ get_arch_family() {
     esac
 }
 
-# Get optimized compiler flags for architecture
 get_compile_flags() {
     local arch=$1
     local tool=$2
     local arch_family=$(get_arch_family "$arch")
     
-    # Base flags for all architectures
     local base_flags="-static -ffunction-sections -fdata-sections"
     
-    # Size optimization flags (more aggressive)
     base_flags="$base_flags -Os -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables"
     
-    # Security hardening (balanced for embedded)
     base_flags="$base_flags -D_FORTIFY_SOURCE=1 -fstack-protector-strong"
     
     
-    # Strip unnecessary symbols
     base_flags="$base_flags -fvisibility=hidden"
     
-    # Reduce binary size
     base_flags="$base_flags -fno-ident -fmerge-all-constants"
     
-    # Architecture-specific optimizations
     case "$arch" in
-        # ARM architectures
         arm32v5le)
             base_flags="$base_flags -march=armv5te -mtune=arm926ej-s -marm"
             base_flags="$base_flags -mno-unaligned-access"
@@ -78,7 +68,6 @@ get_compile_flags() {
             base_flags="$base_flags -march=armv5te -mbig-endian -marm"
             ;;
             
-        # x86 architectures
         i486)
             base_flags="$base_flags -march=i486 -mtune=i486"
             base_flags="$base_flags -mno-sse -mno-sse2 -m32"
@@ -92,7 +81,6 @@ get_compile_flags() {
             base_flags="$base_flags -m64"
             ;;
             
-        # MIPS architectures
         mips32v2le)
             base_flags="$base_flags -march=mips32r2 -mtune=24kc -mabi=32"
             base_flags="$base_flags -mno-shared -mno-plt"
@@ -110,7 +98,6 @@ get_compile_flags() {
             base_flags="$base_flags -mno-shared -mno-plt"
             ;;
             
-        # PowerPC architectures
         ppc32be)
             base_flags="$base_flags -mcpu=powerpc -mtune=powerpc"
             base_flags="$base_flags -mhard-float -msecure-plt"
@@ -128,7 +115,6 @@ get_compile_flags() {
             base_flags="$base_flags -mlittle-endian -mhard-float"
             ;;
             
-        # Other architectures
         m68k)
             base_flags="$base_flags -mcpu=68020 -mtune=68020"
             ;;
@@ -172,47 +158,35 @@ get_compile_flags() {
             ;;
     esac
     
-    # Add architecture-specific flags from environment
     if [ -n "${CFLAGS_ARCH:-}" ]; then
         base_flags="$base_flags $CFLAGS_ARCH"
     fi
     
-    # PIE handling (architecture-specific)
     case "$arch" in
-        # Architectures that don't support PIE well
         sh2|sh2eb|sh4|sh4eb|microblaze|microblazeel|or1k|mipsn32|mipsn32el)
             base_flags="$base_flags -fno-pie -no-pie"
             ;;
-        # ARM hard-float architectures with PIE issues
         arm32v5lehf|arm32v7le|arm32v7lehf|armv6|armv7r)
-            # Skip PIE flags
             ;;
         *)
-            # Most architectures can use PIE
             base_flags="$base_flags -fPIE"
             ;;
     esac
     
-    # Tool-specific optimizations
     case "$tool" in
         busybox)
-            # BusyBox benefits from loop optimizations
             base_flags="$base_flags -fno-strict-aliasing"
             ;;
         gdb|gdbserver)
-            # Debuggers need accurate debugging info
             base_flags="$base_flags -fno-omit-frame-pointer"
             ;;
         strace)
-            # Strace needs to preserve some debugging capability
             base_flags="$base_flags -fno-inline-functions"
             ;;
     esac
     
-    # Add reproducible build seed
     base_flags="$base_flags -frandom-seed=${tool}-${arch}"
     
-    # Debugging support (minimal for embedded)
     if [ "${DEBUG:-}" = "1" ]; then
         base_flags="$base_flags -g1"
     fi
@@ -220,16 +194,12 @@ get_compile_flags() {
     echo "$base_flags"
 }
 
-# Get appropriate linker flags for an architecture
 get_link_flags() {
     local arch=$1
     local base_flags="-static -Wl,--gc-sections"
     
-    # Apply -no-pie and --build-id=sha1 flags universally for all architectures
-    # Skip -no-pie for ARM hard-float architectures due to compiler incompatibility
     case "$arch" in
         arm32v5lehf|arm32v7le|arm32v7lehf|armv6|armv7r)
-            # ARM hard-float architectures can't handle -no-pie with their specific flags
             base_flags="$base_flags -Wl,--build-id=sha1"
             ;;
         *)
@@ -240,25 +210,20 @@ get_link_flags() {
     echo "$base_flags"
 }
 
-# Get C++ specific flags (in addition to C flags)
 get_cxx_flags() {
     local arch=$1
     local tool=$2
     
-    # Get base C flags
     local base_flags=$(get_compile_flags "$arch" "$tool")
     
-    # Add C++-specific optimizations
     base_flags="$base_flags -fvisibility-inlines-hidden"
     
-    # C++-specific optimizations for smaller binaries
-    base_flags="$base_flags -fno-rtti"  # Disable RTTI
-    base_flags="$base_flags -fno-exceptions"  # Disable exceptions
+    base_flags="$base_flags -fno-rtti"
+    base_flags="$base_flags -fno-exceptions"
     
     echo "$base_flags"
 }
 
-# Export functions
 export -f get_compile_flags
 export -f get_cxx_flags
 export -f get_link_flags

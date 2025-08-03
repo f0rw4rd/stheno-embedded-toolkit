@@ -1,13 +1,9 @@
 #!/bin/sh
-# Build preload libraries with musl toolchains
-# This runs inside the main Alpine container
 set -e
 
-# Default values
 LIBS_TO_BUILD=""
 ARCHS_TO_BUILD=""
 
-# Parse arguments
 while [ $# -gt 0 ]; do
     case $1 in
         -d|--debug)
@@ -36,17 +32,14 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# Default to all if not specified
 [ -z "$LIBS_TO_BUILD" ] && LIBS_TO_BUILD="all"
 [ -z "$ARCHS_TO_BUILD" ] && ARCHS_TO_BUILD="all"
 
-# Expand "all"
 if [ "$LIBS_TO_BUILD" = "all" ]; then
     LIBS_TO_BUILD="shell-env shell-helper shell-bind shell-reverse shell-fifo"
 fi
 
 if [ "$ARCHS_TO_BUILD" = "all" ]; then
-    # Match the architectures from the main build system that have musl toolchains
     ARCHS_TO_BUILD="x86_64 aarch64 aarch64_be arm32v5le arm32v5lehf arm32v7le arm32v7lehf armeb armv6 armv7m armv7r i486 ix86le m68k microblaze microblazeel mips32v2be mips32v2le mips64 mips64le or1k ppc32be powerpcle powerpc64 ppc64le riscv32 riscv64 s390x sh2 sh2eb sh4 sh4eb"
 fi
 

@@ -13,26 +13,21 @@ build_socat() {
     local build_dir="/tmp/socat-build-${arch}-$$"
     local TOOL_NAME="socat"
     
-    # Check if binary already exists
     if check_binary_exists "$arch" "socat"; then
         return 0
     fi
     
     echo "[socat] Building for $arch..."
     
-    # Setup architecture
     setup_arch "$arch" || return 1
     
-    # Download source
     download_source "socat" "$SOCAT_VERSION" "$SOCAT_URL" || return 1
     
-    # Create build directory and extract
     mkdir -p "$build_dir"
     cd "$build_dir"
     tar xf /build/sources/socat-${SOCAT_VERSION}.tar.gz
     cd socat-${SOCAT_VERSION}
     
-    # Create config.cache with cross-compilation values
     cat > config.cache << EOF
 ac_cv_func_setenv=yes
 ac_cv_func_unsetenv=yes
@@ -62,7 +57,6 @@ sc_cv_type_socklen_t=yes
 sc_cv_type_stat64=yes
 EOF
 
-    # Adjust for 64-bit architectures
     if [[ "$arch" == "x86_64" || "$arch" == "aarch64" || "$arch" == *"64"* ]]; then
         sed -i 's/ac_cv_sizeof_long=4/ac_cv_sizeof_long=8/' config.cache
         sed -i 's/ac_cv_sizeof_size_t=4/ac_cv_sizeof_size_t=8/' config.cache
@@ -70,12 +64,10 @@ EOF
         sed -i 's/ac_cv_sizeof_void_p=4/ac_cv_sizeof_void_p=8/' config.cache
     fi
     
-    # Adjust for big endian architectures
     if [[ "$arch" == *"be"* ]]; then
         sed -i 's/ac_cv_c_bigendian=no/ac_cv_c_bigendian=yes/' config.cache
     fi
     
-    # Configure with centralized build flags
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
@@ -95,7 +87,6 @@ EOF
         return 1
     }
     
-    # Build
     make -j$(nproc) || {
         echo "[socat] Build failed for $arch"
         cd /
@@ -103,21 +94,17 @@ EOF
         return 1
     }
     
-    # Strip and copy binary
     $STRIP socat
     cp socat "/build/output/$arch/socat"
     
-    # Get size
     local size=$(ls -lh "/build/output/$arch/socat" | awk '{print $5}')
     echo "[socat] Built successfully for $arch ($size)"
     
-    # Cleanup
     cd /
     rm -rf "$build_dir"
     return 0
 }
 
-# Main
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <architecture>"
     echo "Architectures: arm32v5le arm32v5lehf arm32v7le arm32v7lehf mips32v2le mips32v2be ppc32be ix86le x86_64 aarch64 mips64le ppc64le"
