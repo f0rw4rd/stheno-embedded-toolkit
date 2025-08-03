@@ -4,26 +4,24 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 source "$SCRIPT_DIR/../lib/build_flags.sh"
+source "$SCRIPT_DIR/../lib/build_helpers.sh"
 
 BASH_VER="${BASH_VER:-5.2.15}"
 BASH_URL="https://ftp.gnu.org/gnu/bash/bash-5.2.15.tar.gz"
 
 build_bash() {
     local arch=$1
-    local build_dir="/tmp/bash-build-${arch}-$$"
+    local build_dir=$(create_build_dir "bash" "$arch")
     local TOOL_NAME="bash"
     
     if check_binary_exists "$arch" "bash"; then
         return 0
     fi
     
-    echo "[bash] Building for $arch..."
-    
     setup_arch "$arch" || return 1
     
     download_source "bash" "$BASH_VER" "$BASH_URL" || return 1
     
-    mkdir -p "$build_dir"
     cp -a /build/sources/bash-${BASH_VER} "$build_dir/"
     cd "$build_dir/bash-${BASH_VER}"
     
@@ -43,16 +41,12 @@ build_bash() {
         --disable-net-redirections \
         --disable-progcomp \
         --disable-help-builtin || {
-        echo "[bash] Configure failed for $arch"
-        cd /
-        rm -rf "$build_dir"
+        cleanup_build_dir "$build_dir"
         return 1
     }
     
     make -j$(nproc) || {
-        echo "[bash] Build failed for $arch"
-        cd /
-        rm -rf "$build_dir"
+        cleanup_build_dir "$build_dir"
         return 1
     }
     
@@ -60,10 +54,9 @@ build_bash() {
     cp bash "/build/output/$arch/bash"
     
     local size=$(ls -lh "/build/output/$arch/bash" | awk '{print $5}')
-    echo "[bash] Built successfully for $arch ($size)"
+    log_tool "bash" "Built successfully for $arch ($size)"
     
-    cd /
-    rm -rf "$build_dir"
+    cleanup_build_dir "$build_dir"
     return 0
 }
 

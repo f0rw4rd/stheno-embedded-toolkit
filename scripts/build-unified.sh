@@ -94,10 +94,8 @@ ALL_ARCHS=(
     riscv32 riscv64
 )
 
-# All tools
 ALL_TOOLS=(strace busybox busybox_nodrop bash socat socat-ssl ncat ncat-ssl tcpdump gdbserver gdb nmap dropbear)
 
-# Determine what to build
 if [ "$TOOL" = "all" ]; then
     TOOLS_TO_BUILD=("${ALL_TOOLS[@]}")
 else
@@ -110,12 +108,10 @@ else
     ARCHS_TO_BUILD=("$ARCH")
 fi
 
-# Create log directory if needed
 if [ "$LOG_ENABLED" = true ]; then
     mkdir -p /build/logs
 fi
 
-# Build function
 do_build() {
     local tool=$1
     local arch=$2
@@ -125,7 +121,6 @@ do_build() {
         return 1
     fi
     
-    # Debug: Show environment for troubleshooting
     if [ "${DEBUG:-}" = "1" ]; then
         echo "[$arch] DEBUG: CC=$CC, PATH=$PATH"
     fi
@@ -136,11 +131,9 @@ do_build() {
         echo "[$arch] Building $tool (log: $log_file)..."
         
         if [ "${DEBUG:-}" = "1" ]; then
-            # In debug mode, output to both log file and stdout/stderr
             echo "[$arch] DEBUG: Running build with verbose output..."
             (set -x; build_tool "$tool" "$arch" "$MODE") 2>&1 | tee "$log_file"
         else
-            # Normal mode - only to log file
             (set -x; build_tool "$tool" "$arch" "$MODE") > "$log_file" 2>&1
         fi
     else
@@ -151,10 +144,8 @@ do_build() {
     local result=$?
     if [ $result -eq 0 ]; then
         echo "[$arch] ✓ $tool built successfully"
-        # Remove logs for successful builds
         if [ "$LOG_ENABLED" = true ] && [ -n "$log_file" ]; then
             rm -f "$log_file"
-            # Also remove any old logs for this successful tool/arch combination
             rm -f /build/logs/build-${tool}-${arch}-*.log
         fi
     else
@@ -164,7 +155,6 @@ do_build() {
     return $result
 }
 
-# Build summary
 echo "=== Build Configuration ==="
 echo "Tools: ${TOOLS_TO_BUILD[@]}"
 echo "Architectures: ${ARCHS_TO_BUILD[@]}"
@@ -174,24 +164,18 @@ echo "Logging: $LOG_ENABLED"
 echo "=========================="
 echo
 
-# Build statistics
 TOTAL_BUILDS=$((${#TOOLS_TO_BUILD[@]} * ${#ARCHS_TO_BUILD[@]}))
 COMPLETED=0
 FAILED=0
 START_TIME=$(date +%s)
 
-# Build all combinations
 for tool in "${TOOLS_TO_BUILD[@]}"; do
     echo "=== Building $tool ==="
     
-    # Sequential build per architecture
     for arch in "${ARCHS_TO_BUILD[@]}"; do
-        # Build directly (not in background)
-        # Continue on failure instead of exiting
         do_build "$tool" "$arch" || true
     done
     
-    # Count results
     for arch in "${ARCHS_TO_BUILD[@]}"; do
         if [ -f "/build/output/$arch/$tool" ]; then
             COMPLETED=$((COMPLETED + 1))
@@ -202,13 +186,11 @@ for tool in "${TOOLS_TO_BUILD[@]}"; do
     echo
 done
 
-# Calculate build time
 END_TIME=$(date +%s)
 BUILD_TIME=$((END_TIME - START_TIME))
 BUILD_MINS=$((BUILD_TIME / 60))
 BUILD_SECS=$((BUILD_TIME % 60))
 
-# Final summary
 echo "=== Build Summary ==="
 echo "Total builds: $TOTAL_BUILDS"
 echo "Completed: $COMPLETED"
@@ -216,7 +198,6 @@ echo "Failed: $FAILED"
 echo "Build time: ${BUILD_MINS}m ${BUILD_SECS}s"
 echo
 
-# List all built binaries
 echo "=== Built Binaries ==="
 for arch in "${ARCHS_TO_BUILD[@]}"; do
     if ls /build/output/$arch/* >/dev/null 2>&1; then
@@ -225,7 +206,6 @@ for arch in "${ARCHS_TO_BUILD[@]}"; do
     fi
 done
 
-# List failed builds if any
 if [ $FAILED -gt 0 ]; then
     echo
     echo "=== Failed Builds ==="

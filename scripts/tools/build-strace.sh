@@ -36,7 +36,6 @@ build_strace() {
         return 0
     fi
     
-    log_tool "$TOOL_NAME" "Building for $arch..."
     
     setup_arch "$arch" || {
         log_tool_error "$TOOL_NAME" "Unknown architecture: $arch"

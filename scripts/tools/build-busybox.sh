@@ -4,6 +4,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 source "$SCRIPT_DIR/../lib/build_flags.sh"
+source "$SCRIPT_DIR/../lib/build_helpers.sh"
 
 BUSYBOX_VERSION="${BUSYBOX_VERSION:-1.36.1}"
 BUSYBOX_URL="https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
@@ -11,7 +12,7 @@ BUSYBOX_URL="https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
 build_busybox() {
     local arch=$1
     local variant="${2:-standard}"
-    local build_dir="/tmp/busybox-build-${arch}-${variant}-$$"
+    local build_dir=$(create_build_dir "busybox" "${arch}-${variant}")
     local TOOL_NAME="busybox"
     local output_name="busybox"
     
@@ -23,13 +24,12 @@ build_busybox() {
         return 0
     fi
     
-    echo "[busybox] Building $variant variant for $arch..."
+    log_tool "busybox" "Building $variant variant for $arch..."
     
     setup_arch "$arch" || return 1
     
     download_source "busybox" "$BUSYBOX_VERSION" "$BUSYBOX_URL" || return 1
     
-    mkdir -p "$build_dir"
     cd "$build_dir"
     
     tar xf /build/sources/busybox-${BUSYBOX_VERSION}.tar.bz2
@@ -42,7 +42,7 @@ build_busybox() {
     sed -i 's/CONFIG_FEATURE_SHARED_BUSYBOX=y/# CONFIG_FEATURE_SHARED_BUSYBOX is not set/' .config
     
     if [ "$variant" = "nodrop" ]; then
-        echo "[busybox] Applying nodrop modifications..."
+        log_tool "busybox" "Applying nodrop modifications..."
         grep -e "applet:.*BB_SUID_DROP" -rl . | xargs sed -i 's/\(applet:.*\)BB_SUID_DROP/\1BB_SUID_MAYBE/g' || true
     fi
     
@@ -54,9 +54,8 @@ build_busybox() {
     export LDFLAGS="$ldflags"
     
     make ARCH="$CONFIG_ARCH" -j$(nproc) || {
-        echo "[busybox] Build failed for $arch"
-        cd /
-        rm -rf "$build_dir"
+        log_tool_error "busybox" "Build failed for $arch"
+        cleanup_build_dir "$build_dir"
         return 1
     }
     
@@ -64,10 +63,9 @@ build_busybox() {
     cp busybox "/build/output/$arch/$output_name"
     
     local size=$(ls -lh "/build/output/$arch/$output_name" | awk '{print $5}')
-    echo "[busybox] Built $variant variant successfully for $arch ($size)"
+    log_tool "busybox" "Built $variant variant successfully for $arch ($size)"
     
-    cd /
-    rm -rf "$build_dir"
+    cleanup_build_dir "$build_dir"
     return 0
 }
 
@@ -82,7 +80,7 @@ arch=$1
 variant="${2:-standard}"
 
 if [ "$variant" = "both" ]; then
-    echo "[busybox] Building both standard and nodrop variants for $arch..."
+    log_tool "busybox" "Building both standard and nodrop variants for $arch..."
     build_busybox "$arch" "standard" || exit 1
     build_busybox "$arch" "nodrop" || exit 1
 else

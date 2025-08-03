@@ -4,26 +4,25 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 source "$SCRIPT_DIR/../lib/build_flags.sh"
+source "$SCRIPT_DIR/../lib/build_helpers.sh"
 
 SOCAT_VERSION="${SOCAT_VERSION:-1.7.4.4}"
 SOCAT_URL="http://www.dest-unreach.org/socat/download/socat-${SOCAT_VERSION}.tar.gz"
 
 build_socat() {
     local arch=$1
-    local build_dir="/tmp/socat-build-${arch}-$$"
+    local build_dir=$(create_build_dir "socat" "$arch")
     local TOOL_NAME="socat"
     
     if check_binary_exists "$arch" "socat"; then
         return 0
     fi
     
-    echo "[socat] Building for $arch..."
     
     setup_arch "$arch" || return 1
     
     download_source "socat" "$SOCAT_VERSION" "$SOCAT_URL" || return 1
     
-    mkdir -p "$build_dir"
     cd "$build_dir"
     tar xf /build/sources/socat-${SOCAT_VERSION}.tar.gz
     cd socat-${SOCAT_VERSION}
@@ -81,16 +80,14 @@ EOF
         --disable-readline \
         --disable-libwrap \
         --disable-fips || {
-        echo "[socat] Configure failed for $arch"
-        cd /
-        rm -rf "$build_dir"
+        log_tool_error "socat" "Configure failed for $arch"
+        cleanup_build_dir "$build_dir"
         return 1
     }
     
     make -j$(nproc) || {
-        echo "[socat] Build failed for $arch"
-        cd /
-        rm -rf "$build_dir"
+        log_tool_error "socat" "Build failed for $arch"
+        cleanup_build_dir "$build_dir"
         return 1
     }
     
@@ -98,10 +95,9 @@ EOF
     cp socat "/build/output/$arch/socat"
     
     local size=$(ls -lh "/build/output/$arch/socat" | awk '{print $5}')
-    echo "[socat] Built successfully for $arch ($size)"
+    log_tool "socat" "Built successfully for $arch ($size)"
     
-    cd /
-    rm -rf "$build_dir"
+    cleanup_build_dir "$build_dir"
     return 0
 }
 
