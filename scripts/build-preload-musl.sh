@@ -6,13 +6,11 @@ set -e
 # Default values
 LIBS_TO_BUILD=""
 ARCHS_TO_BUILD=""
-DEBUG=""
 
 # Parse arguments
 while [ $# -gt 0 ]; do
     case $1 in
         -d|--debug)
-            DEBUG=1
             shift
             ;;
         all)

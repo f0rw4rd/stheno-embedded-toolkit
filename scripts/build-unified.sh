@@ -62,11 +62,6 @@ while [[ $# -gt 0 ]]; do
             MODE="$2"
             shift 2
             ;;
-        -p|--parallel)
-            # Deprecated option - ignore
-            echo "Warning: --parallel option is deprecated. Builds are sequential per architecture."
-            shift 2
-            ;;
         -l|--log)
             LOG_ENABLED=true
             shift

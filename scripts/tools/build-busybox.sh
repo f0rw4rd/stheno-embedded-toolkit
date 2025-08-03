@@ -1,8 +1,6 @@
 #!/bin/bash
-# Build script for BusyBox
 set -e
 
-# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 source "$SCRIPT_DIR/../lib/build_flags.sh"
@@ -51,11 +49,8 @@ build_busybox() {
     sed -i 's/CONFIG_BUILD_LIBBUSYBOX=y/# CONFIG_BUILD_LIBBUSYBOX is not set/' .config
     sed -i 's/CONFIG_FEATURE_SHARED_BUSYBOX=y/# CONFIG_FEATURE_SHARED_BUSYBOX is not set/' .config
     
-    # For nodrop variant, disable privilege dropping
-    # This technique is inspired by https://github.com/leommxj/prebuilt-multiarch-bin
     if [ "$variant" = "nodrop" ]; then
         echo "[busybox] Applying nodrop modifications..."
-        # Replace BB_SUID_DROP with BB_SUID_MAYBE only in applet definitions
         grep -e "applet:.*BB_SUID_DROP" -rl . | xargs sed -i 's/\(applet:.*\)BB_SUID_DROP/\1BB_SUID_MAYBE/g' || true
     fi
     

@@ -1,23 +1,23 @@
 #!/bin/bash
-# Build script for ltrace (glibc static build)
-# Note: This is the first glibc-based static tool in the toolkit
 set -e
 
-# Load common functions - handle both musl and glibc environments
-if [ -f "${SCRIPT_DIR}/lib/common.sh" ]; then
-    source "${SCRIPT_DIR}/lib/common.sh"
-elif [ -f "${SCRIPT_DIR}/preload/lib/common.sh" ]; then
-    source "${SCRIPT_DIR}/preload/lib/common.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -f "$SCRIPT_DIR/../lib/logging.sh" ]; then
+    source "$SCRIPT_DIR/../lib/logging.sh"
 else
-    # Basic logging if common.sh not found
-    log() { echo "[$(date +%H:%M:%S)] $*"; }
-    log_error() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
+    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+    log_error() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2; }
+fi
+
+if [ -f "$SCRIPT_DIR/../lib/common.sh" ]; then
+    source "$SCRIPT_DIR/../lib/common.sh"
+elif [ -f "$SCRIPT_DIR/../preload/lib/common.sh" ]; then
+    source "$SCRIPT_DIR/../preload/lib/common.sh"
 fi
 
 TOOL_NAME="ltrace"
-TOOL_VERSION="0.7.3-git"  # Using git version for latest fixes
-
-# Tool-specific functions
+TOOL_VERSION="0.7.3-git"
 download_source() {
     local arch="$1"
     

@@ -1,17 +1,15 @@
 #!/bin/bash
-# Common functions and variables for all build scripts
 
-# Ensure toolchain exists (fail if missing)
+source "$(dirname "${BASH_SOURCE[0]}")/logging.sh"
+
 download_toolchain() {
     local arch=$1
     local toolchain_dir="/build/toolchains/$arch"
     
-    # Check if toolchain exists
     if [ -d "$toolchain_dir/bin" ]; then
         return 0
     fi
     
-    # Toolchain missing - fail immediately
     echo "ERROR: Toolchain not found for $arch"
     echo "Expected toolchain directory: $toolchain_dir"
     echo "Toolchains should be pre-downloaded during Docker image build"
@@ -19,11 +17,9 @@ download_toolchain() {
     return 1
 }
 
-# Set architecture variables
 setup_arch() {
     local arch=$1
     
-    # Set variables based on architecture
     case $arch in
         arm32v5le)
             CROSS_COMPILE="arm-linux-musleabi-"
@@ -334,54 +330,5 @@ download_source() {
     fi
     
     # Return success
-    # The caller is responsible for extracting in their build directory
     return 0
-}
-
-# Common build flags - optimized for embedded systems
-# This function returns flags as separate variables to avoid shell expansion issues
-get_build_flags() {
-    # Base optimization flags
-    BASE_CFLAGS="-Os ${CFLAGS_ARCH:-}"
-    BASE_LDFLAGS="-static -Wl,--build-id=sha1"
-    
-    # Extended flags for full static builds
-    FULL_CFLAGS="-static -Os -fomit-frame-pointer ${CFLAGS_ARCH:-}"
-    FULL_LDFLAGS="-static -Wl,--gc-sections -Wl,--build-id=sha1"
-    
-    # Export as individual variables to avoid eval
-    export BASE_CFLAGS
-    export BASE_LDFLAGS
-    export FULL_CFLAGS
-    export FULL_LDFLAGS
-}
-
-# Build and install binary
-install_binary() {
-    local binary=$1
-    local arch=$2
-    local source_path=${3:-$binary}
-    
-    if [ -f "$source_path" ]; then
-        $STRIP "$source_path"
-        cp "$source_path" "/build/output/$arch/"
-        local size=$(ls -lh "/build/output/$arch/$binary" | awk '{print $5}')
-        echo "$binary built successfully for $arch ($size)"
-        return 0
-    else
-        echo "Failed to build $binary for $arch"
-        return 1
-    fi
-}
-
-# Clean build directory
-clean_build() {
-    make clean 2>/dev/null || true
-    make distclean 2>/dev/null || true
-    rm -rf build 2>/dev/null || true
-}
-
-# Parallel make with proper job count
-parallel_make() {
-    make -j$(nproc) "$@"
 }

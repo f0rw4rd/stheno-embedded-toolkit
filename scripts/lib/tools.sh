@@ -1,16 +1,12 @@
 #!/bin/bash
-# Tool dispatcher - routes to individual tool build scripts
 
-# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/build_helpers.sh"
 
-# Parallel make helper
 parallel_make() {
     make -j$(nproc) "$@"
 }
-
-# Tool registry - maps tool names to their build scripts
 declare -A TOOL_SCRIPTS=(
     ["strace"]="$SCRIPT_DIR/../tools/build-strace.sh"
     ["busybox"]="$SCRIPT_DIR/../tools/build-busybox.sh"

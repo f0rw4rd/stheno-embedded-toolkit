@@ -1,25 +1,21 @@
 #!/bin/bash
 # Common functions for preload library builds
 
-# Logging functions
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
-}
+# Source centralized logging
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../../lib/logging.sh" ]; then
+    source "$SCRIPT_DIR/../../lib/logging.sh"
+else
+    # Fallback logging functions
+    log() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+    }
+    
+    log_error() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2
+    }
+fi
 
-log_error() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2
-}
-
-log_debug() {
-    if [ -n "$DEBUG" ]; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] DEBUG: $*"
-    fi
-}
-
-# Check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
 
 # Create directory if it doesn't exist
 ensure_dir() {
@@ -59,38 +55,6 @@ get_log_file() {
     echo "/build/logs-preload/${lib}-${arch}-$(date +%Y%m%d-%H%M%S).log"
 }
 
-# Architecture name mapping
-map_arch_to_ct() {
-    local arch="$1"
-    case "$arch" in
-        x86_64)      echo "x86_64" ;;
-        aarch64)     echo "aarch64" ;;
-        arm32v7le)   echo "arm-cortex_a7-linux-gnueabihf" ;;
-        i486)        echo "i486" ;;
-        mips64le)    echo "mips64el" ;;
-        ppc64le)     echo "powerpc64le" ;;
-        riscv64)     echo "riscv64" ;;
-        s390x)       echo "s390x" ;;
-        aarch64be)   echo "aarch64be" ;;
-        mips64)      echo "mips64" ;;
-        armv5)       echo "armv5" ;;
-        armv6)       echo "armv6" ;;
-        ppc32)       echo "powerpc" ;;
-        sparc64)     echo "sparc64" ;;
-        sh4)         echo "sh4" ;;
-        mips32)      echo "mips32" ;;
-        mips32el)    echo "mips32el" ;;
-        riscv32)     echo "riscv32" ;;
-        microblazeel) echo "microblazeel" ;;
-        microblazebe) echo "microblazebe" ;;
-        nios2)       echo "nios2" ;;
-        openrisc)    echo "openrisc" ;;
-        arcle)       echo "arcle" ;;
-        xtensa)      echo "xtensa" ;;
-        m68k)        echo "m68k" ;;
-        *)           echo "$arch" ;;
-    esac
-}
 
 # Get toolchain prefix for an architecture
 get_toolchain_prefix() {

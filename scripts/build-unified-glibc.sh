@@ -6,15 +6,20 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Load common functions and logging
+if [ -f "$SCRIPT_DIR/lib/logging.sh" ]; then
+    source "$SCRIPT_DIR/lib/logging.sh"
+else
+    # Fallback to basic logging if not found
+    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+    log_error() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2; }
+fi
+
 # Load common functions - check both locations
 if [ -f "$SCRIPT_DIR/lib/common.sh" ]; then
     source "$SCRIPT_DIR/lib/common.sh"
 elif [ -f "$SCRIPT_DIR/preload/lib/common.sh" ]; then
     source "$SCRIPT_DIR/preload/lib/common.sh"
-else
-    # Define basic logging functions if common.sh not found
-    log() { echo "[$(date +%H:%M:%S)] $*"; }
-    log_error() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; }
 fi
 
 # Override paths for glibc builds (reusing preload infrastructure)
