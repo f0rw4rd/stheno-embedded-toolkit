@@ -62,18 +62,14 @@ build_busybox() {
     $STRIP busybox
     cp busybox "/build/output/$arch/$output_name"
     
-    local size=$(ls -lh "/build/output/$arch/$output_name" | awk '{print $5}')
+    local size=$(get_binary_size "/build/output/$arch/$output_name")
     log_tool "busybox" "Built $variant variant successfully for $arch ($size)"
     
     cleanup_build_dir "$build_dir"
     return 0
 }
 
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <architecture> [variant]"
-    echo "Variants: standard (default), nodrop, both"
-    exit 1
-fi
+validate_args 1 "Usage: $0 <architecture> [variant]\nVariants: standard (default), nodrop, both" "$@"
 
 arch=$1
 variant="${2:-standard}"

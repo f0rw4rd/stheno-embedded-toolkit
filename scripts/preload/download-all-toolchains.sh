@@ -26,7 +26,7 @@ download_with_tracking() {
     if download_toolchain "$arch"; then
         echo "success" > "$job_file"
     else
-        echo "failed" > "$job_file"
+        log_error "failed" > "$job_file"
     fi
 }
 
@@ -40,7 +40,7 @@ for arch in $ARCHITECTURES; do
     done
     
     JOB_COUNT=$((JOB_COUNT + 1))
-    echo "[$JOB_COUNT/24] Starting download for $arch..."
+    log_tool "$JOB_COUNT/24" "Starting download for $arch..."
     download_with_tracking "$arch" &
 done
 
@@ -62,7 +62,7 @@ for arch in $ARCHITECTURES; do
         else
             FAILED=$((FAILED + 1))
             FAILED_ARCHS="$FAILED_ARCHS $arch"
-            echo "Failed: $arch"
+            log_error "Failed: $arch"
         fi
     else
         FAILED=$((FAILED + 1))
@@ -77,12 +77,12 @@ echo
 echo "Download Summary"
 echo "Total: $TOTAL"
 echo "Successful: $SUCCESS"
-echo "Failed: $FAILED"
+log_error "Failed: $FAILED"
 
 if [ "$FAILED" -gt 0 ]; then
     echo
-    echo "WARNING: $FAILED toolchain(s) failed to download"
-    echo "Retrying failed downloads sequentially..."
+    log_warn "WARNING: $FAILED toolchain(s) failed to download"
+    log_error "Retrying failed downloads sequentially..."
     echo
     
     FAILED_ARCHS=""
@@ -102,7 +102,7 @@ if [ "$FAILED" -gt 0 ]; then
             RETRY_SUCCESS=$((RETRY_SUCCESS + 1))
             echo "Successfully downloaded $arch on retry"
         else
-            echo "Failed to download $arch even on retry"
+            log_error "Failed to download $arch even on retry"
         fi
     done
     
@@ -113,11 +113,11 @@ if [ "$FAILED" -gt 0 ]; then
     echo "Final Download Summary"
     echo "Total: $TOTAL"
     echo "Successful: $FINAL_SUCCESS"
-    echo "Failed: $FINAL_FAILED"
+    log_error "Failed: $FINAL_FAILED"
     
     if [ "$FINAL_FAILED" -gt 0 ]; then
         echo
-        echo "ERROR: $FINAL_FAILED toolchain(s) failed to download even after retries"
+        log_error "$FINAL_FAILED toolchain(s) failed to download even after retries"
         echo "The Docker build will fail to ensure all architectures are supported"
         exit 1
     fi

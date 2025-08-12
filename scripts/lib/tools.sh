@@ -21,6 +21,8 @@ declare -A TOOL_SCRIPTS=(
     ["gdb"]="$SCRIPT_DIR/../tools/build-gdb.sh"
     ["nmap"]="$SCRIPT_DIR/../tools/build-nmap.sh"
     ["dropbear"]="$SCRIPT_DIR/../tools/build-dropbear.sh"
+    ["ltrace"]="$SCRIPT_DIR/../tools/build-ltrace.sh"
+    ["ply"]="$SCRIPT_DIR/../tools/build-ply.sh"
 )
 
 build_tool() {

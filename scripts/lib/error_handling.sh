@@ -9,7 +9,7 @@ error_handler() {
     local code=$4
     
     if [ $code -ne 0 ]; then
-        echo "ERROR: Command failed with exit code $code" >&2
+        log_error "ERROR: Command failed with exit code $code"
         echo "  Command: $last_command" >&2
         echo "  Line: $line_no" >&2
         echo "  Function: ${FUNCNAME[2]:-main}" >&2

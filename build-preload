@@ -3,6 +3,12 @@
 # This is separate from the main build system to keep things clean
 set -e
 
+# Source architecture mapping
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/scripts/lib/arch_map.sh" ]; then
+    source "$SCRIPT_DIR/scripts/lib/arch_map.sh"
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -94,12 +100,13 @@ EOF
             shift
             ;;
         *)
-            if [[ "$1" =~ ^(x86_64|aarch64|arm32v7le|i486|mips64le|ppc64le|riscv64|s390x|aarch64be|mips64|armv5|armv6|ppc32|sparc64|sh4|mips32|mips32el|riscv32|microblazeel|microblazebe|nios2|openrisc|arcle|xtensa|m68k)$ ]]; then
-                ARCHITECTURES="$1"
+            # Accept any architecture name and map it
+            ARCH_INPUT="$1"
+            # Map architecture name if function available
+            if type map_arch_name >/dev/null 2>&1; then
+                ARCHITECTURES=$(map_arch_name "$ARCH_INPUT")
             else
-                echo "Unknown option: $1"
-                echo "Use --help for usage information"
-                exit 1
+                ARCHITECTURES="$ARCH_INPUT"
             fi
             shift
             ;;
@@ -168,9 +175,9 @@ if [ "$LIBC_TYPE" = "musl" ]; then
     DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/scripts:/build/scripts:ro"
     DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/preload-libs:/build/preload-libs:ro"
 else
-    # For glibc builds, use toolchains from Docker image and mount preload scripts
+    # For glibc builds, use toolchains from Docker image and mount scripts
     # Don't mount toolchains-preload - use the ones in the Docker image
-    DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/scripts/preload:/build/scripts/preload:ro"
+    DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/scripts:/build/scripts:ro"
     DOCKER_CMD="$DOCKER_CMD -v $SCRIPT_DIR/preload-libs:/build/preload-libs:ro"
 fi
 

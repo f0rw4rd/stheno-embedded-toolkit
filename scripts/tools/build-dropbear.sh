@@ -30,8 +30,8 @@ build_dropbear() {
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
-    CFLAGS="$cflags" \
-    LDFLAGS="$ldflags" \
+    CFLAGS="${CFLAGS:-} $cflags" \
+    LDFLAGS="${LDFLAGS:-} $ldflags" \
     ./configure \
         --host=$HOST \
         --disable-zlib \
@@ -73,24 +73,18 @@ EOF
     cp dropbearkey "/build/output/$arch/dropbearkey"
     cp scp "/build/output/$arch/scp"
     
-    cd "/build/output/$arch"
-    ln -sf dbclient ssh
-    
-    local size=$(ls -lh dropbear | awk '{print $5}')
+    local size=$(get_binary_size dropbear)
     log_tool "dropbear" "Built successfully for $arch"
     log_tool "dropbear" "  - dropbear (SSH server): $size"
-    log_tool "dropbear" "  - dbclient (SSH client): $(ls -lh dbclient | awk '{print $5}')"
-    log_tool "dropbear" "  - dropbearkey (key gen): $(ls -lh dropbearkey | awk '{print $5}')"
-    log_tool "dropbear" "  - scp (secure copy): $(ls -lh scp | awk '{print $5}')"
+    log_tool "dropbear" "  - dbclient (SSH client): $(get_binary_size dbclient)"
+    log_tool "dropbear" "  - dropbearkey (key gen): $(get_binary_size dropbearkey)"
+    log_tool "dropbear" "  - scp (secure copy): $(get_binary_size scp)"
     
     cleanup_build_dir "$build_dir"
     return 0
 }
 
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <architecture>"
-    exit 1
-fi
+validate_args 1 "Usage: $0 <architecture>" "$@"
 
 arch=$1
 build_dropbear "$arch"

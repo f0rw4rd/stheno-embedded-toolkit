@@ -1,7 +1,24 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# More robust script directory detection
+if [ -n "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    SCRIPT_DIR="/build/scripts/preload"
+fi
+
+# Ensure we're in the preload directory, not lib
+if [[ "$SCRIPT_DIR" == */lib ]]; then
+    SCRIPT_DIR="$(dirname "$SCRIPT_DIR")"
+fi
+
+# Force correct path if we detect we're in wrong location
+if [ -f "$SCRIPT_DIR/common.sh" ]; then
+    # We're in the lib directory
+    SCRIPT_DIR="$(dirname "$SCRIPT_DIR")"
+fi
+
 BUILD_DIR="/build"
 
 DEBUG="${DEBUG:-}"
@@ -60,12 +77,18 @@ echo "Libc: ${LIBC_TYPE}"
 echo "Debug: ${DEBUG:-0}"
 echo
 
-source "$SCRIPT_DIR/lib/common.sh"
-source "$SCRIPT_DIR/lib/toolchain.sh"
-source "$SCRIPT_DIR/lib/compile.sh"
-source "$SCRIPT_DIR/lib/compile-musl.sh"
+# Save our SCRIPT_DIR before sourcing other scripts
+UNIFIED_SCRIPT_DIR="$SCRIPT_DIR"
 
-source "$SCRIPT_DIR/build-libdesock.sh"
+source "$UNIFIED_SCRIPT_DIR/lib/common.sh"
+source "$UNIFIED_SCRIPT_DIR/lib/toolchain.sh"
+source "$UNIFIED_SCRIPT_DIR/lib/compile.sh"
+source "$UNIFIED_SCRIPT_DIR/lib/compile-musl.sh"
+
+# Source build script - it will inherit our SCRIPT_DIR but that's ok
+# We'll make sure it points to the right place
+SCRIPT_DIR="$UNIFIED_SCRIPT_DIR"  # Ensure it's the preload dir
+source "$UNIFIED_SCRIPT_DIR/build-libdesock.sh"
 
 TOTAL=$((${#LIBS_ARRAY[@]} * ${#ARCHS_ARRAY[@]}))
 COUNT=0
@@ -74,32 +97,32 @@ FAILED=0
 for lib in "${LIBS_ARRAY[@]}"; do
     for arch in "${ARCHS_ARRAY[@]}"; do
         COUNT=$((COUNT + 1))
-        echo "[$COUNT/$TOTAL] Building $lib for $arch..."
+        log_tool "$COUNT/$TOTAL" "Building $lib for $arch..."
         
         if [ "$lib" = "libdesock" ]; then
             if [ "$LIBC_TYPE" = "musl" ]; then
-                echo "[$COUNT/$TOTAL] ⚠ Skipping libdesock for musl (only glibc supported)"
+                log_tool "$COUNT/$TOTAL" "⚠ Skipping libdesock for musl (only glibc supported)"
                 continue
             fi
             if build_libdesock "$arch"; then
-                echo "[$COUNT/$TOTAL] ✓ Successfully built $lib for $arch"
+                log_tool "$COUNT/$TOTAL" "✓ Successfully built $lib for $arch"
             else
-                echo "[$COUNT/$TOTAL] ✗ Failed to build $lib for $arch"
+                log_tool "$COUNT/$TOTAL" "✗ Failed to build $lib for $arch"
                 FAILED=$((FAILED + 1))
             fi
         else
             if [ "$LIBC_TYPE" = "musl" ]; then
                 if build_preload_library_musl "$lib" "$arch"; then
-                    echo "[$COUNT/$TOTAL] ✓ Successfully built $lib for $arch with musl"
+                    log_tool "$COUNT/$TOTAL" "✓ Successfully built $lib for $arch with musl"
                 else
-                    echo "[$COUNT/$TOTAL] ✗ Failed to build $lib for $arch with musl"
+                    log_tool "$COUNT/$TOTAL" "✗ Failed to build $lib for $arch with musl"
                     FAILED=$((FAILED + 1))
                 fi
             else
                 if build_preload_library "$lib" "$arch"; then
-                    echo "[$COUNT/$TOTAL] ✓ Successfully built $lib for $arch with glibc"
+                    log_tool "$COUNT/$TOTAL" "✓ Successfully built $lib for $arch with glibc"
                 else
-                    echo "[$COUNT/$TOTAL] ✗ Failed to build $lib for $arch with glibc"
+                    log_tool "$COUNT/$TOTAL" "✗ Failed to build $lib for $arch with glibc"
                     FAILED=$((FAILED + 1))
                 fi
             fi
@@ -111,6 +134,6 @@ done
 echo "Build Summary"
 echo "Total: $TOTAL"
 echo "Successful: $((TOTAL - FAILED))"
-echo "Failed: $FAILED"
+log_error "Failed: $FAILED"
 
 exit $FAILED

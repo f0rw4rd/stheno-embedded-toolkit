@@ -63,10 +63,7 @@ build_strace() {
     
     export CFLAGS="$cflags"
     export LDFLAGS="$ldflags"
-    export CC="${CROSS_COMPILE}gcc"
-    export AR="${CROSS_COMPILE}ar"
-    export RANLIB="${CROSS_COMPILE}ranlib"
-    export STRIP="${CROSS_COMPILE}strip"
+    export_cross_compiler "$CROSS_COMPILE"
     
     configure_strace "$arch" || {
         log_tool_error "$TOOL_NAME" "Configure failed for $arch"
@@ -90,11 +87,7 @@ build_strace() {
 }
 
 main() {
-    if [ $# -eq 0 ]; then
-        echo "Usage: $0 <architecture>"
-        echo "Build strace for specified architecture"
-        exit 1
-    fi
+    validate_args 1 "Usage: $0 <architecture>\nBuild strace for specified architecture" "$@"
     
     local arch=$1
     

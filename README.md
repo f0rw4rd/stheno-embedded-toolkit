@@ -104,8 +104,8 @@ DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
 - **ncat** - Network utility
 - **tcpdump** - Network packet analyzer
 - **gdbserver** - Remote debugging server
-- **gdb** - GNU debugger
 - **nmap** - Network exploration tool
+- **ply** - BPF-based dynamic tracer (eBPF/kprobes)
 - **dropbear** - Lightweight SSH server/client (includes dbclient, scp, dropbearkey)
 
 ### Glibc Static Tools (new)
@@ -115,7 +115,8 @@ DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
 
 ## Supported Architectures
 
-36 architectures are supported:
+35 architectures are supported (musl static builds):
+24 architectures are supported (glibc builds):
 
 **ARM**: `aarch64`, `aarch64_be`, `arm32v5le`, `arm32v5lehf`, `arm32v7le`, `arm32v7lehf`, `armeb`, `armv6`, `armv7m`, `armv7r`
 
@@ -132,6 +133,8 @@ DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
 ### Architecture Compatibility
 
 **Important**: Not all tools can be built for all architectures due to various constraints:
+
+**ply architecture support**: Only supports little-endian architectures including x86_64, aarch64, arm32v7le, mips32v2le, riscv64, riscv32, and ppc64le. Big-endian architectures are not supported.
 
 - **Tool limitations**: Some tools may not support certain architectures upstream
 - **Toolchain constraints**: Some architecture/tool combinations may fail during cross-compilation
@@ -164,8 +167,8 @@ TOOL:
   ncat        Network utility
   tcpdump     Network packet analyzer
   gdbserver   Remote debugging server
-  gdb         GNU debugger
   ltrace      Library call tracer (glibc static)
+  ply         BPF-based dynamic tracer
 
 OPTIONS:
   --arch ARCH Build for specific architecture
@@ -213,5 +216,5 @@ This project builds upon the work of several excellent projects:
 ### Tool Sources
 
 All tools are built from their official upstream sources:
-- BusyBox, Bash, strace, tcpdump, socat, nmap/ncat - Built from source
-- GDB - Downloaded from gdb-static releases for reliability
+- BusyBox, Bash, strace, tcpdump, socat, nmap/ncat, ply - Built from source
+- GDBserver - Built from GNU GDB source

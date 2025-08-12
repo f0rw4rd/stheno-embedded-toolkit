@@ -95,8 +95,8 @@ EOF
     log_tool "socat-ssl" "CC: $CC"
     log_tool "socat-ssl" "HOST: $HOST"
     
-    CFLAGS="$cflags -I$ssl_dir/include -I$readline_dir/include -I$ncurses_dir/include" \
-    LDFLAGS="$ldflags -L$ssl_dir/lib -L$readline_dir/lib -L$ncurses_dir/lib" \
+    CFLAGS="${CFLAGS:-} $cflags -I$ssl_dir/include -I$readline_dir/include -I$ncurses_dir/include" \
+    LDFLAGS="${LDFLAGS:-} $ldflags -L$ssl_dir/lib -L$readline_dir/lib -L$ncurses_dir/lib" \
     LIBS="-lssl -lcrypto -lreadline -lncurses" \
     ./configure \
         --host=$HOST \

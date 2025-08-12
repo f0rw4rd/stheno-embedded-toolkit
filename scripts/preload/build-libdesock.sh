@@ -1,7 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Only set SCRIPT_DIR if not already set (e.g., when sourced)
+if [ -z "${SCRIPT_DIR:-}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+# Ensure we're in the preload directory, not lib
+if [[ "$SCRIPT_DIR" == */lib ]]; then
+    SCRIPT_DIR="$(dirname "$SCRIPT_DIR")"
+fi
+
 source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/toolchain.sh"
 
@@ -176,7 +185,7 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
         for a in x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x \
                  aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el \
                  riscv32 microblazeel microblazebe nios2 openrisc arcle m68k; do
-            build_libdesock "$a" || echo "Failed to build for $a"
+            build_libdesock "$a" || log_error "Failed to build for $a"
         done
     else
         build_libdesock "$arch"

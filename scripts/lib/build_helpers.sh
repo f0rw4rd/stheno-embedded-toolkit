@@ -68,7 +68,7 @@ install_binary() {
         return 1
     }
     
-    local size=$(ls -lh "/build/output/$arch/$dest_name" | awk '{print $5}')
+    local size=$(get_binary_size "/build/output/$arch/$dest_name")
     log_tool "$tool_name" "Built successfully for $arch ($size)"
     
     return 0
@@ -139,6 +139,33 @@ ac_cv_sizeof_gid_t=4
 EOF
 }
 
+get_binary_size() {
+    local file_path=$1
+    ls -lh "$file_path" 2>/dev/null | awk '{print $5}'
+}
+
+validate_args() {
+    local min_args=$1
+    local usage=$2
+    shift 2
+    
+    if [ $# -lt $min_args ]; then
+        echo "$usage"
+        exit 1
+    fi
+}
+
+export_cross_compiler() {
+    local cross_prefix=$1
+    export CC="${cross_prefix}gcc"
+    export CXX="${cross_prefix}g++"
+    export AR="${cross_prefix}ar"
+    export RANLIB="${cross_prefix}ranlib"
+    export STRIP="${cross_prefix}strip"
+    export NM="${cross_prefix}nm"
+    export LD="${cross_prefix}ld"
+}
+
 build_tool_generic() {
     local tool_name=$1
     local arch=$2
@@ -174,12 +201,7 @@ build_tool_generic() {
     local ldflags=$(get_link_flags "$arch")
     export CFLAGS="$cflags"
     export LDFLAGS="$ldflags"
-    export CC="${CROSS_COMPILE}gcc"
-    export CXX="${CROSS_COMPILE}g++"
-    export AR="${CROSS_COMPILE}ar"
-    export RANLIB="${CROSS_COMPILE}ranlib"
-    export STRIP="${CROSS_COMPILE}strip"
-    export NM="${CROSS_COMPILE}nm"
+    export_cross_compiler "$CROSS_COMPILE"
     
     if ! $configure_func "$arch"; then
         log_tool_error "$tool_name" "Configuration failed for $arch"

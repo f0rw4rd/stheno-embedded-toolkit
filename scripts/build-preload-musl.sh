@@ -1,5 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/logging.sh"
+source "$SCRIPT_DIR/lib/build_helpers.sh"
+source "$SCRIPT_DIR/lib/arch_map.sh"
 
 LIBS_TO_BUILD=""
 ARCHS_TO_BUILD=""
@@ -26,7 +31,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         *)
-            echo "Unknown argument: $1"
+            log_error "Unknown argument: $1"
             exit 1
             ;;
     esac
@@ -52,8 +57,8 @@ build_preload_musl() {
     mkdir -p "$output_dir"
     
     if [ -f "$output_dir/${lib}.so" ]; then
-        local size=$(ls -lh "$output_dir/${lib}.so" 2>/dev/null | awk '{print $5}')
-        echo "[$arch] Already built: ${lib}.so ($size)"
+        local size=$(get_binary_size "$output_dir/${lib}.so")
+        log_tool "$arch" "Already built: ${lib}.so ($size)"
         return 0
     fi
     
@@ -91,17 +96,17 @@ build_preload_musl() {
         sh2eb)       prefix="sh2eb-linux-musl" ;;
         sh4)         prefix="sh4-linux-musl" ;;
         sh4eb)       prefix="sh4eb-linux-musl" ;;
-        *)           echo "[$arch] Unknown architecture"; return 1 ;;
+        *)           log_tool "$arch" "Unknown architecture"; return 1 ;;
     esac
     
     local toolchain_dir="/build/toolchains/${prefix}-cross"
     if [ ! -d "$toolchain_dir" ]; then
-        echo "[$arch] Toolchain not found, building it first..."
+        log_tool "$arch" "Toolchain not found, building it first..."
         cd /build
         /scripts/build-unified.sh strace "$arch" >/dev/null 2>&1 || true
         
         if [ ! -d "$toolchain_dir" ]; then
-            echo "[$arch] Failed to create toolchain"
+            log_tool "$arch" "Failed to create toolchain"
             return 1
         fi
     fi
@@ -110,11 +115,11 @@ build_preload_musl() {
     local strip_cmd="${toolchain_dir}/bin/${prefix}-strip"
     
     if [ ! -x "$compiler" ]; then
-        echo "[$arch] Compiler not found: $compiler"
+        log_tool "$arch" "Compiler not found: $compiler"
         return 1
     fi
     
-    echo "[$arch] Building ${lib}.so..."
+    log_tool "$arch" "Building ${lib}.so..."
     
     local cflags="-fPIC -O2 -Wall -D_GNU_SOURCE -fno-strict-aliasing"
     local ldflags="-shared -Wl,-soname,${lib}.so"
@@ -128,27 +133,24 @@ build_preload_musl() {
             $strip_cmd "${lib}.so" 2>/dev/null || true
             
             cp "${lib}.so" "$output_dir/" || {
-                echo "[$arch] Failed to copy library"
-                cd /
-                rm -rf "$build_dir"
+                log_tool "$arch" "Failed to copy library"
+                cleanup_build_dir "$build_dir"
                 return 1
             }
             
-            local size=$(ls -lh "$output_dir/${lib}.so" 2>/dev/null | awk '{print $5}')
-            echo "[$arch] Successfully built: ${lib}.so ($size)"
+            local size=$(get_binary_size "$output_dir/${lib}.so")
+            log_tool "$arch" "Successfully built: ${lib}.so ($size)"
             
-            cd /
-            rm -rf "$build_dir"
+            cleanup_build_dir "$build_dir"
             return 0
         else
-            echo "[$arch] Link failed"
+            log_tool "$arch" "Link failed"
         fi
     else
-        echo "[$arch] Compilation failed"
+        log_tool "$arch" "Compilation failed"
     fi
     
-    cd /
-    rm -rf "$build_dir"
+    cleanup_build_dir "$build_dir"
     return 1
 }
 
@@ -168,8 +170,8 @@ for lib in $LIBS_TO_BUILD; do
     done
 done
 
-echo "Total: $TOTAL"
-echo "Successful: $SUCCESS"
-echo "Failed: $FAILED"
+log_info "Total: $TOTAL"
+log_info "Successful: $SUCCESS"
+log_error "Failed: $FAILED"
 
 exit $FAILED

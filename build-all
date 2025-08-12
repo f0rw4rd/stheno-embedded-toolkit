@@ -1,0 +1,26 @@
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "Building all Sthenos tools..."
+echo
+
+echo "=== Building main static tools (musl) ==="
+./build all all
+
+echo
+echo "=== Building preload libraries (musl) ==="
+./build-preload all all
+
+echo
+echo "=== Building preload libraries (glibc) ==="
+./build-preload --libc glibc all all
+
+echo
+echo "Build complete!"
+echo "Outputs:"
+echo "  - Static tools: output/"
+echo "  - Preload libs (musl): output-preload/musl/"
+echo "  - Preload libs (glibc): output-preload/glibc/"

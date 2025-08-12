@@ -1,20 +1,8 @@
 #!/bin/bash
 # Common functions for preload library builds
 
-# Source centralized logging
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/../../lib/logging.sh" ]; then
-    source "$SCRIPT_DIR/../../lib/logging.sh"
-else
-    # Fallback logging functions
-    log() {
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
-    }
-    
-    log_error() {
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2
-    }
-fi
+# Source centralized logging from main scripts/lib
+source /build/scripts/lib/logging.sh
 
 
 # Create directory if it doesn't exist

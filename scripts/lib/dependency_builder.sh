@@ -42,37 +42,29 @@ build_dependency_generic() {
     local cflags=$(get_compile_flags "$arch" "$dep_name")
     local ldflags=$(get_link_flags "$arch")
     
-    export CC="${CROSS_COMPILE}gcc"
-    export CXX="${CROSS_COMPILE}g++"
-    export AR="${CROSS_COMPILE}ar"
-    export RANLIB="${CROSS_COMPILE}ranlib"
-    export STRIP="${CROSS_COMPILE}strip"
+    export_cross_compiler "$CROSS_COMPILE"
     export CFLAGS="$cflags"
     export LDFLAGS="$ldflags"
     
     if ! $configure_func "$arch" "$build_dir" "$cache_dir"; then
         log_error "Configuration failed for $dep_name on $arch"
-        cd /
-        rm -rf "$build_dir"
+        cleanup_build_dir "$build_dir"
         return 1
     fi
     
     if ! $build_func "$arch" "$build_dir"; then
         log_error "Build failed for $dep_name on $arch"
-        cd /
-        rm -rf "$build_dir"
+        cleanup_build_dir "$build_dir"
         return 1
     fi
     
     if ! $install_func install "$cache_dir" "$build_dir"; then
         log_error "Installation failed for $dep_name on $arch"
-        cd /
-        rm -rf "$build_dir"
+        cleanup_build_dir "$build_dir"
         return 1
     fi
     
-    cd /
-    rm -rf "$build_dir"
+    cleanup_build_dir "$build_dir"
     
     echo "$cache_dir"
     return 0

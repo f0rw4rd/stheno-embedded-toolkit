@@ -2,8 +2,7 @@
 
 ### Build Output ###
 # Compiled binaries and executables
-# output/ is now tracked in the repository
-*/output/
+# Ignore output directories with binaries
 *.bin
 *.elf
 *.exe

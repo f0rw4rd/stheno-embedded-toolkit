@@ -43,8 +43,8 @@ build_tcpdump() {
     local cflags=$(get_compile_flags "$arch" "$TOOL_NAME")
     local ldflags=$(get_link_flags "$arch")
     
-    CFLAGS="$cflags -I$pcap_dir/include" \
-    LDFLAGS="$ldflags -L$pcap_dir/lib" \
+    CFLAGS="${CFLAGS:-} $cflags -I$pcap_dir/include" \
+    LDFLAGS="${LDFLAGS:-} $ldflags -L$pcap_dir/lib" \
     ./configure \
         --host=$HOST \
         --enable-static \

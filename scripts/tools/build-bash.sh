@@ -53,17 +53,14 @@ build_bash() {
     $STRIP bash
     cp bash "/build/output/$arch/bash"
     
-    local size=$(ls -lh "/build/output/$arch/bash" | awk '{print $5}')
+    local size=$(get_binary_size "/build/output/$arch/bash")
     log_tool "bash" "Built successfully for $arch ($size)"
     
     cleanup_build_dir "$build_dir"
     return 0
 }
 
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <architecture>"
-    exit 1
-fi
+validate_args 1 "Usage: $0 <architecture>" "$@"
 
 arch=$1
 build_bash "$arch"

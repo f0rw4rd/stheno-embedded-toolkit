@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source "$(dirname "${BASH_SOURCE[0]}")/logging.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/build_helpers.sh"
 
 download_toolchain() {
     local arch=$1
@@ -10,7 +11,7 @@ download_toolchain() {
         return 0
     fi
     
-    echo "ERROR: Toolchain not found for $arch"
+    log_error "Toolchain not found for $arch"
     echo "Expected toolchain directory: $toolchain_dir"
     echo "Toolchains should be pre-downloaded during Docker image build"
     echo "Please rebuild the Docker image with: docker build -t stheno-toolkit ."
@@ -238,7 +239,7 @@ setup_arch() {
             CONFIG_ARCH="mips64"
             ;;
         *)
-            echo "Unknown architecture: $arch"
+            log_error "Unknown architecture: $arch"
             return 1
             ;;
     esac
@@ -248,7 +249,7 @@ setup_arch() {
     if [ ! -d "/build/toolchains/$toolchain_dir/bin" ]; then
         echo "Toolchain for $arch not found, downloading..."
         download_toolchain "$arch" || {
-            echo "Failed to download toolchain for $arch"
+            log_error "Failed to download toolchain for $arch"
             return 1
         }
     fi
@@ -259,15 +260,10 @@ setup_arch() {
     export HOST
     export CROSS_COMPILE
     export CONFIG_ARCH
-    export CC="${CROSS_COMPILE}gcc"
-    export CXX="${CROSS_COMPILE}g++"
-    export AR="${CROSS_COMPILE}ar"
-    export STRIP="${CROSS_COMPILE}strip"
-    export RANLIB="${CROSS_COMPILE}ranlib"
-    export LD="${CROSS_COMPILE}ld"
+    export_cross_compiler "$CROSS_COMPILE"
     
     if ! $CC --version >/dev/null 2>&1; then
-        echo "Warning: Compiler $CC not found or not working for $arch"
+        log_warn "Warning: Compiler $CC not found or not working for $arch"
         echo "Toolchain may need to be downloaded or is incompatible"
     fi
     
@@ -284,8 +280,8 @@ check_binary_exists() {
     local skip_if_exists="${SKIP_IF_EXISTS:-true}"
     
     if [ "$skip_if_exists" = "true" ] && [ -f "/build/output/$arch/$binary" ]; then
-        local size=$(ls -lh "/build/output/$arch/$binary" | awk '{print $5}')
-        echo "[$binary] Already built for $arch ($size), skipping..."
+        local size=$(get_binary_size "/build/output/$arch/$binary")
+        log_tool "$binary" "Already built for $arch ($size), skipping..."
         return 0
     fi
     return 1
@@ -302,7 +298,7 @@ download_source() {
     if [ ! -f "/build/sources/$filename" ]; then
         echo "Downloading $name $version..."
         if ! wget -q --show-progress "$url" -O "/build/sources/$filename"; then
-            echo "Failed to download $name from $url"
+            log_error "Failed to download $name from $url"
             rm -f "/build/sources/$filename"
             return 1
         fi

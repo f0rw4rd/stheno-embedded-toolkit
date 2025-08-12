@@ -28,6 +28,9 @@ get_compile_flags() {
     
     base_flags="$base_flags -D_FORTIFY_SOURCE=1 -fstack-protector-strong"
     
+    # Maximum compatibility flags
+    base_flags="$base_flags -D_GNU_SOURCE -fno-strict-aliasing"
+    
     
     base_flags="$base_flags -fvisibility=hidden"
     
@@ -159,16 +162,8 @@ get_compile_flags() {
         base_flags="$base_flags $CFLAGS_ARCH"
     fi
     
-    case "$arch" in
-        sh2|sh2eb|sh4|sh4eb|microblaze|microblazeel|or1k|mipsn32|mipsn32el)
-            base_flags="$base_flags -fno-pie -no-pie"
-            ;;
-        arm32v5lehf|arm32v7le|arm32v7lehf|armv6|armv7r)
-            ;;
-        *)
-            base_flags="$base_flags -fPIE"
-            ;;
-    esac
+    # Disable PIE/PIC for all architectures for maximum compatibility
+    base_flags="$base_flags -fno-pic -fno-PIC -fno-pie -fno-PIE"
     
     case "$tool" in
         busybox)
@@ -195,14 +190,11 @@ get_link_flags() {
     local arch=$1
     local base_flags="-static -Wl,--gc-sections"
     
-    case "$arch" in
-        arm32v5lehf|arm32v7le|arm32v7lehf|armv6|armv7r)
-            base_flags="$base_flags -Wl,--build-id=sha1"
-            ;;
-        *)
-            base_flags="$base_flags -no-pie -Wl,--build-id=sha1"
-            ;;
-    esac
+    # Maximum compatibility: support both old and new hash styles
+    base_flags="$base_flags -Wl,--hash-style=both"
+    
+    # Always disable PIE for all architectures
+    base_flags="$base_flags -no-pie -Wl,--build-id=sha1"
     
     echo "$base_flags"
 }

@@ -29,7 +29,7 @@ download_toolchain() {
     done
     
     if [ "$download_success" = false ]; then
-        echo "✗ Failed to download $target_dir after $max_retries attempts"
+        log_error "✗ Failed to download $target_dir after $max_retries attempts"
         return 1
     fi
     
@@ -42,7 +42,7 @@ download_toolchain() {
         rm -f "$filename"
         echo "✓ $target_dir"
     else
-        echo "✗ Failed to extract $target_dir"
+        log_error "✗ Failed to extract $target_dir"
         rm -f "$filename"
         return 1
     fi
@@ -102,7 +102,7 @@ download_with_tracking() {
     if download_toolchain "$url" "$target_dir"; then
         echo "success" > "$job_file"
     else
-        echo "failed" > "$job_file"
+        log_error "failed" > "$job_file"
     fi
 }
 
@@ -144,11 +144,11 @@ echo
 echo "Download Summary"
 echo "Total: $TOTAL"
 echo "Successful: $SUCCESS"
-echo "Failed: $FAILED"
+log_error "Failed: $FAILED"
 
 if [ "$FAILED" -gt 0 ]; then
     echo
-    echo "Retrying failed downloads sequentially..."
+    log_error "Retrying failed downloads sequentially..."
     echo
     
     IFS='|' read -ra FAILED_ARRAY <<< "$FAILED_TOOLCHAINS"
@@ -164,7 +164,7 @@ if [ "$FAILED" -gt 0 ]; then
                 RETRY_SUCCESS=$((RETRY_SUCCESS + 1))
                 echo "Successfully downloaded $target_dir on retry"
             else
-                echo "Failed to download $target_dir even on retry"
+                log_error "Failed to download $target_dir even on retry"
             fi
         fi
     done
@@ -176,11 +176,11 @@ if [ "$FAILED" -gt 0 ]; then
     echo "Final Download Summary"
     echo "Total: $TOTAL"
     echo "Successful: $FINAL_SUCCESS"
-    echo "Failed: $FINAL_FAILED"
+    log_error "Failed: $FINAL_FAILED"
     
     if [ "$FINAL_FAILED" -gt 0 ]; then
         echo
-        echo "ERROR: $FINAL_FAILED toolchain(s) failed to download even after retries"
+        log_error "$FINAL_FAILED toolchain(s) failed to download even after retries"
         exit 1
     fi
 fi

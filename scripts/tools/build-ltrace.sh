@@ -6,8 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/../lib/logging.sh" ]; then
     source "$SCRIPT_DIR/../lib/logging.sh"
 else
-    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
-    log_error() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2; }
+    log() { log_tool "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
+    log_error() { log_tool "$(date '+%Y-%m-%d %H:%M:%S')" "ERROR: $*" >&2; }
 fi
 
 if [ -f "$SCRIPT_DIR/../lib/common.sh" ]; then
@@ -22,7 +22,7 @@ download_source() {
     local arch="$1"
     
     if [ ! -f "sources/${TOOL_NAME}-${TOOL_VERSION}.tar.gz" ]; then
-        echo "[$(date +%H:%M:%S)] Downloading ltrace source..."
+        log_tool "$(date +%H:%M:%S)" "Downloading ltrace source..."
         
         cd sources
         if [ ! -d "ltrace" ]; then
@@ -40,7 +40,7 @@ download_source() {
         cd ..
     fi
     
-    echo "[$(date +%H:%M:%S)] Extracting ltrace source for $arch..."
+    log_tool "$(date +%H:%M:%S)" "Extracting ltrace source for $arch..."
     local arch_build_dir="${BUILD_DIR}/${TOOL_NAME}-${TOOL_VERSION}-${arch}"
     mkdir -p "$arch_build_dir"
     cd "$arch_build_dir"
@@ -52,8 +52,8 @@ download_source() {
     elif [ -d "ltrace" ]; then
         mv ltrace "${TOOL_NAME}-${TOOL_VERSION}"
     elif [ ! -d "${TOOL_NAME}-${TOOL_VERSION}" ]; then
-        echo "[$(date +%H:%M:%S)] ERROR: Failed to extract ltrace source" >&2
-        echo "[$(date +%H:%M:%S)] Looking for extracted directory..." >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Failed to extract ltrace source" >&2
+        log_tool "$(date +%H:%M:%S)" "Looking for extracted directory..." >&2
         ls -la | grep -E "^d" >&2
         return 1
     fi
@@ -67,8 +67,8 @@ configure_build() {
     local src_dir="${arch_build_dir}/${TOOL_NAME}-${TOOL_VERSION}"
     
     if [ ! -d "$src_dir" ]; then
-        echo "[$(date +%H:%M:%S)] ERROR: Source directory not found: $src_dir" >&2
-        echo "[$(date +%H:%M:%S)] Contents of arch build dir:" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Source directory not found: $src_dir" >&2
+        log_tool "$(date +%H:%M:%S)" "Contents of arch build dir:" >&2
         ls -la "$arch_build_dir" >&2
         return 1
     fi
@@ -76,17 +76,17 @@ configure_build() {
     cd "$src_dir"
     
     if [ ! -f "configure.ac" ] && [ ! -f "autogen.sh" ]; then
-        echo "[$(date +%H:%M:%S)] ERROR: Not in ltrace source directory" >&2
-        echo "[$(date +%H:%M:%S)] Current directory: $(pwd)" >&2
-        echo "[$(date +%H:%M:%S)] Contents:" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Not in ltrace source directory" >&2
+        log_tool "$(date +%H:%M:%S)" "Current directory: $(pwd)" >&2
+        log_tool "$(date +%H:%M:%S)" "Contents:" >&2
         ls -la >&2
         return 1
     fi
     
     if [ ! -f "configure" ]; then
-        echo "[$(date +%H:%M:%S)] Running autogen.sh..."
+        log_tool "$(date +%H:%M:%S)" "Running autogen.sh..."
         PATH="/usr/bin:/bin:$PATH" bash ./autogen.sh || {
-            echo "[$(date +%H:%M:%S)] ERROR: autogen.sh failed" >&2
+            log_tool "$(date +%H:%M:%S)" "ERROR: autogen.sh failed" >&2
             return 1
         }
     fi
@@ -99,8 +99,8 @@ configure_build() {
     
     cd "$src_dir"
     
-    CFLAGS="-static -O2 -g -I${DEPS_PREFIX}/include -I${sysroot}/usr/include" \
-    LDFLAGS="-static -L${DEPS_PREFIX}/lib -L${sysroot}/usr/lib" \
+    CFLAGS="${CFLAGS:-} -static -O2 -g -I${DEPS_PREFIX}/include -I${sysroot}/usr/include" \
+    LDFLAGS="${LDFLAGS:-} -static -L${DEPS_PREFIX}/lib -L${sysroot}/usr/lib" \
     CPPFLAGS="-I${DEPS_PREFIX}/include -I${sysroot}/usr/include" \
     ./configure \
         --host="${toolchain_name}" \
@@ -115,7 +115,7 @@ configure_build() {
         CC="${CC}" \
         AR="${AR}" \
         STRIP="${STRIP}" || {
-        echo "[$(date +%H:%M:%S)] ERROR: Configure failed" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Configure failed" >&2
         return 1
     }
 }
@@ -124,11 +124,11 @@ build_static_deps() {
     local arch="$1"
     
     if [ -f "${DEPS_PREFIX}/lib/libelf.a" ] && [ -f "${DEPS_PREFIX}/lib/libz.a" ]; then
-        echo "[$(date +%H:%M:%S)] Static dependencies already built"
+        log_tool "$(date +%H:%M:%S)" "Static dependencies already built"
         return 0
     fi
     
-    echo "[$(date +%H:%M:%S)] Building static libelf..."
+    log_tool "$(date +%H:%M:%S)" "Building static libelf..."
     
     cd "$BUILD_DIR"
     if [ ! -f "$SOURCES_DIR/zlib-1.3.tar.gz" ]; then
@@ -139,8 +139,8 @@ build_static_deps() {
     tar xf "$SOURCES_DIR/zlib-1.3.1.tar.gz"
     cd zlib-1.3.1
     
-    CC="${CC}" CFLAGS="-O2 -g" ./configure --prefix="${DEPS_PREFIX}" --static || {
-        echo "[$(date +%H:%M:%S)] ERROR: zlib configure failed" >&2
+    CC="${CC}" CFLAGS="${CFLAGS:-} -O2 -g" ./configure --prefix="${DEPS_PREFIX}" --static || {
+        log_tool "$(date +%H:%M:%S)" "ERROR: zlib configure failed" >&2
         return 1
     }
     make -j$(nproc)
@@ -155,8 +155,8 @@ build_static_deps() {
     tar xf "$SOURCES_DIR/elfutils-0.189.tar.bz2"
     cd elfutils-0.189
     
-    CFLAGS="-O2 -g -I${DEPS_PREFIX}/include" \
-    LDFLAGS="-L${DEPS_PREFIX}/lib" \
+    CFLAGS="${CFLAGS:-} -O2 -g -I${DEPS_PREFIX}/include" \
+    LDFLAGS="${LDFLAGS:-} -L${DEPS_PREFIX}/lib" \
     ./configure \
         --host="${toolchain_name}" \
         --prefix="${DEPS_PREFIX}" \
@@ -168,7 +168,7 @@ build_static_deps() {
         --without-lzma \
         CC="${CC}" \
         AR="${AR}" || {
-        echo "[$(date +%H:%M:%S)] ERROR: elfutils configure failed" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: elfutils configure failed" >&2
         return 1
     }
     
@@ -192,12 +192,14 @@ build_tool() {
     make V=1 -j$(nproc) || true
     
     if [ ! -f "main.o" ] || [ ! -f ".libs/libltrace.a" ]; then
-        echo "[$(date +%H:%M:%S)] ERROR: Required object files not built" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Required object files not built" >&2
         return 1
     fi
     
     cat > demangle_stub.c << 'EOF'
 /* Stub implementation to avoid C++ dependency */
+#include <stddef.h>
+#include <string.h>
 
 char *my_demangle(const char *function_name) {
     /* Just return a copy of the original name without demangling */
@@ -211,10 +213,10 @@ EOF
     ${AR} d .libs/libltrace.a demangle.o 2>/dev/null || true
     ${AR} r .libs/libltrace.a demangle_stub.o
     
-    echo "[$(date +%H:%M:%S)] Attempting static link..."
+    log_tool "$(date +%H:%M:%S)" "Attempting static link..."
     ${CC} -static -o ltrace main.o .libs/libltrace.a sysdeps/.libs/libos.a \
-        -L${DEPS_PREFIX}/lib -lelf -lz -lpthread -lm || {
-        echo "[$(date +%H:%M:%S)] ERROR: Manual linking failed" >&2
+        -L${DEPS_PREFIX}/lib -lelf -lz -lpthread -lm ${LDFLAGS:-} || {
+        log_tool "$(date +%H:%M:%S)" "ERROR: Manual linking failed" >&2
         return 1
     }
 }
@@ -232,7 +234,7 @@ install_tool() {
     install -D -m 755 ltrace "$install_dir/ltrace"
     
     if ! file "$install_dir/ltrace" | grep -q "statically linked"; then
-        echo "[$(date +%H:%M:%S)] ERROR: Binary is not statically linked!" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Binary is not statically linked!" >&2
         ldd "$install_dir/ltrace" || true
         return 1
     fi
@@ -249,24 +251,24 @@ main() {
     
     download_source "$arch"
     
-    echo "[$(date +%H:%M:%S)] Configuring ${TOOL_NAME} for ${arch}..."
+    log_tool "$(date +%H:%M:%S)" "Configuring ${TOOL_NAME} for ${arch}..."
     if ! configure_build "$arch" "${BUILD_DIR}/${build_name}"; then
-        echo "[$(date +%H:%M:%S)] ERROR: Configuration failed" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Configuration failed" >&2
         return 1
     fi
     
-    echo "[$(date +%H:%M:%S)] Building ${TOOL_NAME} for ${arch}..."
+    log_tool "$(date +%H:%M:%S)" "Building ${TOOL_NAME} for ${arch}..."
     if ! build_tool "$arch" "${BUILD_DIR}/${build_name}"; then
-        echo "[$(date +%H:%M:%S)] ERROR: Build failed" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Build failed" >&2
         return 1
     fi
     
-    echo "[$(date +%H:%M:%S)] Installing ${TOOL_NAME} for ${arch}..."
+    log_tool "$(date +%H:%M:%S)" "Installing ${TOOL_NAME} for ${arch}..."
     if ! install_tool "$arch" "${BUILD_DIR}/${build_name}" "${OUTPUT_DIR}/${arch}"; then
-        echo "[$(date +%H:%M:%S)] ERROR: Installation failed" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Installation failed" >&2
         return 1
     fi
     
-    echo "[$(date +%H:%M:%S)] ${TOOL_NAME} built successfully for ${arch}"
+    log_tool "$(date +%H:%M:%S)" "${TOOL_NAME} built successfully for ${arch}"
     return 0
 }

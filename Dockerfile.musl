@@ -29,6 +29,8 @@ RUN apk update && apk add --no-cache \
     musl-dev \
     readline-dev \
     libpcap-dev \
+    # BSD compatibility headers for sys/queue.h
+    bsd-compat-headers \
     # GNU parallel for faster downloads
     parallel
 

@@ -1,20 +1,28 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+GLIBC_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$(cd "$GLIBC_SCRIPT_DIR/.." && pwd)"
 
-if [ -f "$SCRIPT_DIR/lib/logging.sh" ]; then
-    source "$SCRIPT_DIR/lib/logging.sh"
-else
-    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
-    log_error() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2; }
+if [ -f "$GLIBC_SCRIPT_DIR/lib/logging.sh" ]; then
+    source "$GLIBC_SCRIPT_DIR/lib/logging.sh"
 fi
 
-if [ -f "$SCRIPT_DIR/lib/common.sh" ]; then
-    source "$SCRIPT_DIR/lib/common.sh"
-elif [ -f "$SCRIPT_DIR/preload/lib/common.sh" ]; then
-    source "$SCRIPT_DIR/preload/lib/common.sh"
+if [ -f "$GLIBC_SCRIPT_DIR/lib/build_flags_glibc.sh" ]; then
+    source "$GLIBC_SCRIPT_DIR/lib/build_flags_glibc.sh"
+fi
+
+if [ -f "$GLIBC_SCRIPT_DIR/lib/arch_map.sh" ]; then
+    source "$GLIBC_SCRIPT_DIR/lib/arch_map.sh"
+else
+    log() { log_tool "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
+    log_error() { log_tool "$(date '+%Y-%m-%d %H:%M:%S')" "ERROR: $*" >&2; }
+fi
+
+if [ -f "$GLIBC_SCRIPT_DIR/lib/common.sh" ]; then
+    source "$GLIBC_SCRIPT_DIR/lib/common.sh"
+elif [ -f "$GLIBC_SCRIPT_DIR/preload/lib/common.sh" ]; then
+    source "$GLIBC_SCRIPT_DIR/preload/lib/common.sh"
 fi
 
 TOOLCHAINS_DIR="/build/toolchains-preload"
@@ -35,21 +43,27 @@ get_glibc_tools() {
 }
 
 map_arch_to_musl() {
-    local arch="$1"
-    case "$arch" in
-        arm32v7le)   echo "arm32v7le" ;;
-        armv5)       echo "arm32v5le" ;;
-        armv6)       echo "armv6" ;;
-        ppc32)       echo "ppc32be" ;;
-        ppc64le)     echo "ppc64le" ;;
-        i486)        echo "i486" ;;
-        mips32)      echo "mips32v2be" ;;
-        mips32el)    echo "mips32v2le" ;;
-        openrisc)    echo "or1k" ;;
-        powerpc64)   echo "powerpc64" ;;
-        aarch64be)   echo "aarch64_be" ;;
-        *)           echo "$arch" ;;
-    esac
+    # Use unified architecture mapping
+    if type map_arch_name >/dev/null 2>&1; then
+        map_arch_name "$1"
+    else
+        # Fallback if arch_map.sh not loaded
+        local arch="$1"
+        case "$arch" in
+            arm32v7le)   echo "arm32v7le" ;;
+            armv5)       echo "arm32v5le" ;;
+            armv6)       echo "armv6" ;;
+            ppc32)       echo "ppc32be" ;;
+            ppc64le)     echo "ppc64le" ;;
+            i486)        echo "i486" ;;
+            mips32)      echo "mips32v2be" ;;
+            mips32el)    echo "mips32v2le" ;;
+            openrisc)    echo "or1k" ;;
+            powerpc64)   echo "powerpc64" ;;
+            aarch64be)   echo "aarch64_be" ;;
+            *)           echo "$arch" ;;
+        esac
+    fi
 }
 
 setup_arch_glibc() {
@@ -92,7 +106,7 @@ setup_arch_glibc() {
         xtensa)      TOOLCHAIN_PREFIX="xtensa" ;;
         m68k)        TOOLCHAIN_PREFIX="m68k" ;;
         *) 
-            echo "[$(date +%H:%M:%S)] ERROR: Unsupported architecture for glibc: $arch" >&2
+            log_tool "$(date +%H:%M:%S)" "ERROR: Unsupported architecture for glibc: $arch" >&2
             return 1
             ;;
     esac
@@ -128,7 +142,7 @@ setup_arch_glibc() {
     
     local toolchain_dir="${TOOLCHAINS_DIR}/${TOOLCHAIN_NAME}"
     if [ ! -d "$toolchain_dir" ]; then
-        echo "[$(date +%H:%M:%S)] ERROR: Toolchain not found for $arch at $toolchain_dir" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Toolchain not found for $arch at $toolchain_dir" >&2
         return 1
     fi
     
@@ -139,7 +153,12 @@ setup_arch_glibc() {
     export STRIP="${TOOLCHAIN_NAME}-strip"
     export TOOLCHAIN_PREFIX
     
-    export SCRIPT_DIR TOOLCHAINS_DIR OUTPUT_DIR BUILD_DIR SOURCES_DIR DEPS_PREFIX LOGS_DIR
+    # Set common build flags using centralized configuration
+    export CFLAGS=$(get_glibc_compile_flags "$arch" "")
+    export CXXFLAGS=$(get_glibc_cxx_flags "$arch" "")
+    export LDFLAGS=$(get_glibc_link_flags "$arch")
+    
+    export GLIBC_SCRIPT_DIR TOOLCHAINS_DIR OUTPUT_DIR BUILD_DIR SOURCES_DIR DEPS_PREFIX LOGS_DIR
 }
 
 build_glibc_tool() {
@@ -158,9 +177,9 @@ build_glibc_tool() {
     export DEPS_PREFIX="${DEPS_PREFIX}/${arch}"
     mkdir -p "${DEPS_PREFIX}/lib" "${DEPS_PREFIX}/include"
     
-    local build_script="${SCRIPT_DIR}/tools/build-${tool}.sh"
+    local build_script="${GLIBC_SCRIPT_DIR}/tools/build-${tool}.sh"
     if [ ! -f "$build_script" ]; then
-        echo "[$(date +%H:%M:%S)] ERROR: Build script not found: $build_script" >&2
+        log_tool "$(date +%H:%M:%S)" "ERROR: Build script not found: $build_script" >&2
         return 1
     fi
     
@@ -216,17 +235,25 @@ main() {
             local timestamp=$(date +%Y%m%d-%H%M%S)
             local log_file="${LOGS_DIR}/build-${tool}-${musl_arch}-${timestamp}.log"
             
-            echo -n "[$musl_arch] Building $tool (log: $log_file)..."
-            
-            if build_glibc_tool "$tool" "$arch" > "$log_file" 2>&1; then
+            # Check if binary already exists and skip if requested
+            if [ "${SKIP_IF_EXISTS:-true}" = "true" ] && [ -f "${OUTPUT_DIR}/${musl_arch}/${tool}" ]; then
+                echo -n "[$musl_arch] $tool already exists, skipping..."
                 success=$((success + 1))
                 echo ""
-                echo "[$musl_arch] ✓ $tool built successfully"
+                log_tool "$musl_arch" "✓ $tool already exists"
+            else
+                echo -n "[$musl_arch] Building $tool (log: $log_file)..."
+                
+                if build_glibc_tool "$tool" "$arch" > "$log_file" 2>&1; then
+                success=$((success + 1))
+                echo ""
+                log_tool "$musl_arch" "✓ $tool built successfully"
             else
                 failed=$((failed + 1))
                 echo ""
-                echo "[$musl_arch] ✗ $tool build failed"
-                echo "[$musl_arch] Check log: $log_file"
+                log_tool "$musl_arch" "✗ $tool build failed"
+                log_tool "$musl_arch" "Check log: $log_file"
+                fi
             fi
         done
     done
@@ -234,15 +261,36 @@ main() {
     echo ""
     echo "Total builds: $total"
     echo "Successful: $success"
-    echo "Failed: $failed"
+    log_error "Failed: $failed"
     echo ""
     echo "End time: $(date)"
     
     if [ $failed -eq 0 ]; then
         echo "✓ All builds completed successfully"
     else
-        echo "✗ Some builds failed. Check logs for details."
+        log_error "✗ Some builds failed. Check logs for details."
     fi
+    
+    # Show detailed output with BuildID
+    echo ""
+    echo "Build artifacts:"
+    for arch_dir in $ARCHS_TO_BUILD; do
+        local musl_arch=$(map_arch_to_musl "$arch_dir")
+        if [ -d "${OUTPUT_DIR}/${musl_arch}" ] && [ -n "$(ls -A ${OUTPUT_DIR}/${musl_arch} 2>/dev/null)" ]; then
+            echo "${musl_arch}:"
+            for binary in ${OUTPUT_DIR}/${musl_arch}/*; do
+                if [ -f "$binary" ]; then
+                    local basename=$(basename "$binary")
+                    local file_info=$(file "$binary" 2>/dev/null | cut -d: -f2- | sed 's/^ *//')
+                    printf "  %-20s %s\n" "${basename}:" "$file_info"
+                fi
+            done
+        fi
+    done
+    
+    # Clean up empty architecture directories
+    log_tool "$(date +%H:%M:%S)" "Cleaning up empty directories..."
+    find "${OUTPUT_DIR}" -type d -empty -delete 2>/dev/null || true
     
     return $failed
 }
