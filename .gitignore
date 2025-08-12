@@ -305,9 +305,6 @@ htmlcov/
 # Keep GitHub workflows
 !.github/
 
-# Allow output-preload directory
-!output-preload/
-
 # Temporary test directories
 build-test/
 gdb-14.1/

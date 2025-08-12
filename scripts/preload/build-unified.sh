@@ -26,7 +26,7 @@ LIBS_TO_BUILD=""
 ARCHS_TO_BUILD=""
 LIBC_TYPE="${LIBC_TYPE:-glibc}"
 
-ALL_LIBS=(libdesock shell-env shell-helper shell-bind shell-reverse shell-fifo)
+ALL_LIBS=(libdesock shell-env shell-helper shell-bind shell-reverse shell-fifo tls-noverify)
 
 ALL_ARCHS=(x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el riscv32 microblazeel microblazebe nios2 openrisc arcle m68k)
 
@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
             fi
             shift
             ;;
-        libdesock|shell-env|shell-helper|shell-bind|shell-reverse|shell-fifo)
+        libdesock|shell-env|shell-helper|shell-bind|shell-reverse|shell-fifo|tls-noverify)
             LIBS_TO_BUILD="$1"
             shift
             ;;
@@ -89,6 +89,7 @@ source "$UNIFIED_SCRIPT_DIR/lib/compile-musl.sh"
 # We'll make sure it points to the right place
 SCRIPT_DIR="$UNIFIED_SCRIPT_DIR"  # Ensure it's the preload dir
 source "$UNIFIED_SCRIPT_DIR/build-libdesock.sh"
+source "$UNIFIED_SCRIPT_DIR/build-tls-noverify.sh"
 
 TOTAL=$((${#LIBS_ARRAY[@]} * ${#ARCHS_ARRAY[@]}))
 COUNT=0
@@ -109,6 +110,22 @@ for lib in "${LIBS_ARRAY[@]}"; do
             else
                 log_tool "$COUNT/$TOTAL" "✗ Failed to build $lib for $arch"
                 FAILED=$((FAILED + 1))
+            fi
+        elif [ "$lib" = "tls-noverify" ]; then
+            if [ "$LIBC_TYPE" = "musl" ]; then
+                if build_tls_noverify_musl "$arch"; then
+                    log_tool "$COUNT/$TOTAL" "✓ Successfully built $lib for $arch with musl"
+                else
+                    log_tool "$COUNT/$TOTAL" "✗ Failed to build $lib for $arch with musl"
+                    FAILED=$((FAILED + 1))
+                fi
+            else
+                if build_tls_noverify "$arch"; then
+                    log_tool "$COUNT/$TOTAL" "✓ Successfully built $lib for $arch with glibc"
+                else
+                    log_tool "$COUNT/$TOTAL" "✗ Failed to build $lib for $arch with glibc"
+                    FAILED=$((FAILED + 1))
+                fi
             fi
         else
             if [ "$LIBC_TYPE" = "musl" ]; then

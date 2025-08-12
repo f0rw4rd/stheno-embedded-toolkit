@@ -22,7 +22,7 @@ while [ $# -gt 0 ]; do
             fi
             shift
             ;;
-        shell-env|shell-helper|shell-bind|shell-reverse|shell-fifo)
+        shell-env|shell-helper|shell-bind|shell-reverse|shell-fifo|tls-noverify)
             LIBS_TO_BUILD="$1"
             shift
             ;;
@@ -41,7 +41,7 @@ done
 [ -z "$ARCHS_TO_BUILD" ] && ARCHS_TO_BUILD="all"
 
 if [ "$LIBS_TO_BUILD" = "all" ]; then
-    LIBS_TO_BUILD="shell-env shell-helper shell-bind shell-reverse shell-fifo"
+    LIBS_TO_BUILD="shell-env shell-helper shell-bind shell-reverse shell-fifo tls-noverify"
 fi
 
 if [ "$ARCHS_TO_BUILD" = "all" ]; then
@@ -128,8 +128,14 @@ build_preload_musl() {
     mkdir -p "$build_dir"
     cd "$build_dir"
     
+    # Add pthread for tls-noverify
+    local extra_libs="-ldl"
+    if [ "$lib" = "tls-noverify" ]; then
+        extra_libs="-ldl -lpthread"
+    fi
+    
     if $compiler $cflags -c "$source" -o "${lib}.o" 2>&1; then
-        if $compiler $ldflags -o "${lib}.so" "${lib}.o" -ldl 2>&1; then
+        if $compiler $ldflags -o "${lib}.so" "${lib}.o" $extra_libs 2>&1; then
             $strip_cmd "${lib}.so" 2>/dev/null || true
             
             cp "${lib}.so" "$output_dir/" || {
