@@ -52,7 +52,11 @@ build_preload_musl() {
     local lib="$1"
     local arch="$2"
     local output_dir="/build/output-preload/musl/$arch"
+    # Special handling for tls-noverify which is in a subdirectory
     local source="/build/preload-libs/${lib}.c"
+    if [ "$lib" = "tls-noverify" ]; then
+        source="/build/preload-libs/tls-preloader/tls_noverify.c"
+    fi
     
     mkdir -p "$output_dir"
     

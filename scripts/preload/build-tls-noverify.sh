@@ -49,8 +49,8 @@ build_tls_noverify() {
     mkdir -p "$build_dir"
     cd "$build_dir"
     
-    # Copy source file
-    cp "/build/preload-libs/tls-noverify.c" .
+    # Copy source file from tls-preloader submodule
+    cp "/build/preload-libs/tls-preloader/tls_noverify.c" tls-noverify.c
     
     # Compilation flags
     local CFLAGS="-fPIC -O2 -fomit-frame-pointer -fno-stack-protector -Wall -Wextra"
@@ -135,8 +135,8 @@ build_tls_noverify_musl() {
     mkdir -p "$build_dir"
     cd "$build_dir"
     
-    # Copy source file
-    cp "/build/preload-libs/tls-noverify.c" .
+    # Copy source file from tls-preloader submodule
+    cp "/build/preload-libs/tls-preloader/tls_noverify.c" tls-noverify.c
     
     # Compilation flags for musl
     local CFLAGS="-fPIC -O2 -Wall -Wextra"
