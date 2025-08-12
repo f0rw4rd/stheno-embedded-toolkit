@@ -46,8 +46,9 @@ RUN mkdir -p /build/sources /build/toolchains /build/deps-cache /build/output /b
 
 WORKDIR /build
 
-# Copy download script
+# Copy download script and required libraries
 COPY scripts/download-toolchains.sh /build/scripts/
+COPY scripts/lib/logging.sh /build/scripts/lib/
 
 # Download all musl toolchains during build
 # This ensures toolchains are available at runtime

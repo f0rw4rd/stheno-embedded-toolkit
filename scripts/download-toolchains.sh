@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Source logging functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/logging.sh"
+
 TOOLCHAIN_DIR="/build/toolchains"
 mkdir -p "$TOOLCHAIN_DIR"
 cd "$TOOLCHAIN_DIR"
@@ -49,6 +53,7 @@ download_toolchain() {
 }
 
 export -f download_toolchain
+export -f log_error
 
 declare -a TOOLCHAINS=(
     "https://musl.cc/arm-linux-musleabi-cross.tgz arm32v5le"

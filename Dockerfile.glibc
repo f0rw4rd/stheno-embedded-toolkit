@@ -65,6 +65,7 @@ WORKDIR /build
 COPY --chown=builder:builder scripts/preload/download-toolchains.sh /build/scripts/preload/
 COPY --chown=builder:builder scripts/preload/download-all-toolchains.sh /build/scripts/preload/
 COPY --chown=builder:builder scripts/preload/lib/common.sh /build/scripts/preload/lib/
+COPY --chown=builder:builder scripts/lib/logging.sh /build/scripts/lib/
 
 # Build argument for parallel downloads (default: 8)
 ARG TOOLCHAIN_PARALLEL_DOWNLOADS=8
