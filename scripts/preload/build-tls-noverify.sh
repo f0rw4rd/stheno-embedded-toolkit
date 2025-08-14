@@ -14,15 +14,44 @@ fi
 source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/toolchain.sh"
 
+# Global variables for tls-preloader source
+TLS_PRELOADER_REPO="https://github.com/f0rw4rd/tls-preloader.git"
+TLS_PRELOADER_SRC_DIR=""
+TLS_PRELOADER_GIT_COMMIT=""
+
+# Function to clone tls-preloader repository once
+clone_tls_preloader() {
+    if [ -n "$TLS_PRELOADER_SRC_DIR" ] && [ -d "$TLS_PRELOADER_SRC_DIR" ]; then
+        # Already cloned
+        return 0
+    fi
+    
+    TLS_PRELOADER_SRC_DIR="/tmp/tls-preloader-src-$$"
+    log "Cloning tls-preloader repository..."
+    
+    git clone --depth 1 "$TLS_PRELOADER_REPO" "$TLS_PRELOADER_SRC_DIR" || {
+        log_error "Failed to clone tls-preloader repository"
+        return 1
+    }
+    
+    # Get the git commit hash
+    TLS_PRELOADER_GIT_COMMIT=$(cd "$TLS_PRELOADER_SRC_DIR" && git rev-parse --short HEAD)
+    log "Using tls-preloader commit: $TLS_PRELOADER_GIT_COMMIT"
+    
+    return 0
+}
+
 build_tls_noverify() {
     local arch="$1"
     local output_dir="/build/output-preload/glibc/$arch"
-    local build_dir="/tmp/tls-noverify-build-${arch}-$$"
     
-    if [ -f "$output_dir/tls-noverify.so" ]; then
-        log "tls-noverify.so already built for $arch"
+    if [ -f "$output_dir/libtlsnoverify.so" ]; then
+        log "libtlsnoverify.so already built for $arch"
         return 0
     fi
+    
+    # Clone repository if not already done
+    clone_tls_preloader || return 1
     
     log "Building tls-noverify for $arch..."
     
@@ -34,6 +63,7 @@ build_tls_noverify() {
     local toolchain_dir=$(get_toolchain_dir "$arch")
     local cross_compile=$(get_toolchain_prefix "$arch")
     local CC="${toolchain_dir}/bin/${cross_compile}-gcc"
+    local STRIP="${toolchain_dir}/bin/${cross_compile}-strip"
     
     if [ ! -x "$CC" ]; then
         local actual_gcc=$(find "${toolchain_dir}/bin" -name "*-gcc" -type f -executable | grep -v ".br_real" | head -1)
@@ -46,60 +76,45 @@ build_tls_noverify() {
         fi
     fi
     
-    mkdir -p "$build_dir"
-    cd "$build_dir"
+    if [ ! -x "$STRIP" ]; then
+        STRIP=$(find "${toolchain_dir}/bin" -name "*-strip" -type f -executable | head -1)
+    fi
     
-    # Copy source file from tls-preloader submodule
-    cp "/build/preload-libs/tls-preloader/tls_noverify.c" tls-noverify.c
+    # Build in the source directory
+    cd "$TLS_PRELOADER_SRC_DIR"
     
-    # Compilation flags
-    local CFLAGS="-fPIC -O2 -fomit-frame-pointer -fno-stack-protector -Wall -Wextra"
-    CFLAGS="$CFLAGS -D_GNU_SOURCE"
-    CFLAGS="$CFLAGS -DSHARED"
+    # Clean any previous build artifacts
+    make clean >/dev/null 2>&1 || true
     
-    # Add architecture-specific flags
-    case "$arch" in
-        x86_64|aarch64*|ppc64le|s390x|mips64*|sparc64|riscv64)
-            # 64-bit architectures
-            ;;
-        *)
-            # 32-bit architectures
-            ;;
-    esac
+    log "Building libtlsnoverify.so using Makefile..."
     
-    local LDFLAGS="-shared -ldl -lpthread"
+    # Export CC and STRIP for the Makefile
+    export CC="$CC"
+    export STRIP="$STRIP"
     
-    log "Compiling tls-noverify..."
-    $CC $CFLAGS -c tls-noverify.c -o tls-noverify.o || {
-        log_error "Compilation failed"
-        cd /
-        rm -rf "$build_dir"
+    # Build using the Makefile
+    make || {
+        log_error "Make failed"
+        make clean >/dev/null 2>&1 || true
         return 1
     }
     
-    $CC $LDFLAGS -o tls-noverify.so tls-noverify.o || {
-        log_error "Linking failed"
-        cd /
-        rm -rf "$build_dir"
+    # Check if the library was built
+    if [ ! -f "libtlsnoverify.so" ]; then
+        log_error "libtlsnoverify.so was not created"
+        make clean >/dev/null 2>&1 || true
         return 1
-    }
+    fi
     
+    # Copy to output directory
     mkdir -p "$output_dir"
-    cp tls-noverify.so "$output_dir/"
+    cp libtlsnoverify.so "$output_dir/"
     
-    local strip_cmd="${toolchain_dir}/bin/${cross_compile}-strip"
-    if [ ! -x "$strip_cmd" ]; then
-        strip_cmd=$(find "${toolchain_dir}/bin" -name "*-strip" -type f -executable | head -1)
-    fi
-    if [ -x "$strip_cmd" ]; then
-        $strip_cmd "$output_dir/tls-noverify.so" 2>/dev/null || true
-    fi
+    local size=$(ls -lh "$output_dir/libtlsnoverify.so" | awk '{print $5}')
+    log "Successfully built libtlsnoverify.so for $arch ($size)"
     
-    local size=$(ls -lh "$output_dir/tls-noverify.so" | awk '{print $5}')
-    log "Successfully built tls-noverify.so for $arch ($size)"
-    
-    cd /
-    rm -rf "$build_dir"
+    # Clean up build artifacts
+    make clean >/dev/null 2>&1 || true
     
     return 0
 }
@@ -107,12 +122,14 @@ build_tls_noverify() {
 build_tls_noverify_musl() {
     local arch="$1"
     local output_dir="/build/output-preload/musl/$arch"
-    local build_dir="/tmp/tls-noverify-build-${arch}-musl-$$"
     
-    if [ -f "$output_dir/tls-noverify.so" ]; then
-        log "tls-noverify.so already built for $arch (musl)"
+    if [ -f "$output_dir/libtlsnoverify.so" ]; then
+        log "libtlsnoverify.so already built for $arch (musl)"
         return 0
     fi
+    
+    # Clone repository if not already done
+    clone_tls_preloader || return 1
     
     log "Building tls-noverify for $arch (musl)..."
     
@@ -124,6 +141,8 @@ build_tls_noverify_musl() {
     fi
     
     local CC="${toolchain_dir}/bin/gcc"
+    local STRIP="${toolchain_dir}/bin/strip"
+    
     if [ ! -x "$CC" ]; then
         CC=$(find "${toolchain_dir}/bin" -name "*-gcc" -type f -executable | head -1)
         if [ -z "$CC" ]; then
@@ -132,51 +151,61 @@ build_tls_noverify_musl() {
         fi
     fi
     
-    mkdir -p "$build_dir"
-    cd "$build_dir"
-    
-    # Copy source file from tls-preloader submodule
-    cp "/build/preload-libs/tls-preloader/tls_noverify.c" tls-noverify.c
-    
-    # Compilation flags for musl
-    local CFLAGS="-fPIC -O2 -Wall -Wextra"
-    CFLAGS="$CFLAGS -D_GNU_SOURCE"
-    CFLAGS="$CFLAGS -DSHARED"
-    
-    local LDFLAGS="-shared -ldl -lpthread"
-    
-    log "Compiling tls-noverify.so (musl)..."
-    $CC $CFLAGS -c tls-noverify.c -o tls-noverify.o || {
-        log_error "Compilation failed"
-        cd /
-        rm -rf "$build_dir"
-        return 1
-    }
-    
-    $CC $LDFLAGS -o tls-noverify.so tls-noverify.o || {
-        log_error "Linking failed"
-        cd /
-        rm -rf "$build_dir"
-        return 1
-    }
-    
-    mkdir -p "$output_dir"
-    cp tls-noverify.so "$output_dir/"
-    
-    # Strip the binary
-    local strip_cmd="${toolchain_dir}/bin/strip"
-    if [ -x "$strip_cmd" ]; then
-        $strip_cmd "$output_dir/tls-noverify.so" 2>/dev/null || true
+    if [ ! -x "$STRIP" ]; then
+        STRIP=$(find "${toolchain_dir}/bin" -name "*-strip" -type f -executable | head -1)
     fi
     
-    local size=$(ls -lh "$output_dir/tls-noverify.so" | awk '{print $5}')
-    log "Successfully built tls-noverify.so for $arch (musl) ($size)"
+    # Build in the source directory
+    cd "$TLS_PRELOADER_SRC_DIR"
     
-    cd /
-    rm -rf "$build_dir"
+    # Clean any previous build artifacts
+    make clean >/dev/null 2>&1 || true
+    
+    log "Building libtlsnoverify.so using Makefile (musl)..."
+    
+    # Export CC and STRIP for the Makefile
+    export CC="$CC"
+    export STRIP="$STRIP"
+    
+    # Build using the Makefile
+    make || {
+        log_error "Make failed"
+        make clean >/dev/null 2>&1 || true
+        return 1
+    }
+    
+    # Check if the library was built
+    if [ ! -f "libtlsnoverify.so" ]; then
+        log_error "libtlsnoverify.so was not created"
+        make clean >/dev/null 2>&1 || true
+        return 1
+    fi
+    
+    # Copy to output directory
+    mkdir -p "$output_dir"
+    cp libtlsnoverify.so "$output_dir/"
+    
+    local size=$(ls -lh "$output_dir/libtlsnoverify.so" | awk '{print $5}')
+    log "Successfully built libtlsnoverify.so for $arch (musl) ($size)"
+    
+    # Clean up build artifacts
+    make clean >/dev/null 2>&1 || true
     
     return 0
 }
+
+# Cleanup function to remove cloned repository
+cleanup_tls_preloader() {
+    if [ -n "$TLS_PRELOADER_SRC_DIR" ] && [ -d "$TLS_PRELOADER_SRC_DIR" ]; then
+        log_debug "Cleaning up tls-preloader source directory"
+        rm -rf "$TLS_PRELOADER_SRC_DIR"
+        TLS_PRELOADER_SRC_DIR=""
+        TLS_PRELOADER_GIT_COMMIT=""
+    fi
+}
+
+# Set trap to cleanup on exit
+trap cleanup_tls_preloader EXIT
 
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     if [ $# -eq 0 ]; then
