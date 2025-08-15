@@ -50,6 +50,7 @@ Includes:
 - **shell-bind** - Bind shell on port
 - **shell-reverse** - Reverse shell
 - **shell-fifo** - Named pipe shell
+- **tls-noverify** - Disable TLS/SSL certificate verification (from [f0rw4rd](https://github.com/f0rw4rd/tls-preloader))
 
 ### libdesock Example
 
@@ -71,6 +72,16 @@ afl-fuzz -i corpus -o findings -m none -- ./nginx
 # Configuration options
 DESOCK_CONNECT=1 LD_PRELOAD=./libdesock.so ./client_app  # For connect mode
 DESOCK_BIND=1 LD_PRELOAD=./libdesock.so ./server_app     # For bind mode
+```
+
+### tls-noverify Example
+
+Bypass TLS/SSL certificate verification for testing:
+
+```bash
+# Debug TLS issues
+LD_PRELOAD=./libtlsnoverify.so curl https://expired.badssl.com/
+TLS_NOVERIFY_DEBUG=1 LD_PRELOAD=./libtlsnoverify.so wget https://self-signed.badssl.com/
 ```
 
 ## Build System Structure
