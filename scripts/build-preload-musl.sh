@@ -26,7 +26,7 @@ while [ $# -gt 0 ]; do
             LIBS_TO_BUILD="$1"
             shift
             ;;
-        x86_64|aarch64|arm32v7le|i486|mips64le|ppc64le|riscv64)
+        x86_64|aarch64|arm32v7le|i486|mips64le|ppc64le|riscv64|s390x|aarch64be|mips64|armv5|armv6|ppc32|sparc64|sh4|mips32|mips32el|riscv32|microblazeel|microblazebe|nios2|openrisc|arcle|m68k)
             ARCHS_TO_BUILD="$1"
             shift
             ;;
@@ -45,18 +45,26 @@ if [ "$LIBS_TO_BUILD" = "all" ]; then
 fi
 
 if [ "$ARCHS_TO_BUILD" = "all" ]; then
-    ARCHS_TO_BUILD="x86_64 aarch64 aarch64_be arm32v5le arm32v5lehf arm32v7le arm32v7lehf armeb armv6 armv7m armv7r i486 ix86le m68k microblaze microblazeel mips32v2be mips32v2le mips64 mips64le or1k ppc32be powerpcle powerpc64 ppc64le riscv32 riscv64 s390x sh2 sh2eb sh4 sh4eb"
+    # Use the same architectures as glibc for consistency
+    ARCHS_TO_BUILD="x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el riscv32 microblazeel microblazebe nios2 openrisc arcle m68k"
 fi
 
 build_preload_musl() {
     local lib="$1"
     local arch="$2"
     local output_dir="/build/output-preload/musl/$arch"
-    # Special handling for tls-noverify which is in a subdirectory
-    local source="/build/preload-libs/${lib}.c"
+    
+    # Special handling for tls-noverify - use the dedicated build script
     if [ "$lib" = "tls-noverify" ]; then
-        source="/build/preload-libs/tls-preloader/tls_noverify.c"
+        # Source the tls-noverify build script
+        source "/build/scripts/preload/build-tls-noverify.sh"
+        # Call the musl build function
+        build_tls_noverify_musl "$arch"
+        return $?
     fi
+    
+    # Regular preload library handling
+    local source="/build/preload-libs/${lib}.c"
     
     mkdir -p "$output_dir"
     
@@ -70,36 +78,28 @@ build_preload_musl() {
     case "$arch" in
         x86_64)      prefix="x86_64-linux-musl" ;;
         aarch64)     prefix="aarch64-linux-musl" ;;
-        aarch64_be)  prefix="aarch64_be-linux-musl" ;;
-        arm32v5le)   prefix="arm-linux-musleabi" ;;
-        arm32v5lehf) prefix="arm-linux-musleabihf" ;;
+        aarch64be)   prefix="aarch64_be-linux-musl" ;;
         arm32v7le)   prefix="armv7l-linux-musleabihf" ;;
-        arm32v7lehf) prefix="armv7l-linux-musleabihf" ;;
-        armeb)       prefix="armeb-linux-musleabi" ;;
-        armv6)       prefix="armv6-linux-musleabihf" ;;
-        armv7m)      prefix="armv7m-linux-musleabi" ;;
-        armv7r)      prefix="armv7r-linux-musleabihf" ;;
         i486)        prefix="i486-linux-musl" ;;
-        ix86le)      prefix="i686-linux-musl" ;;
-        m68k)        prefix="m68k-linux-musl" ;;
-        microblaze)  prefix="microblaze-linux-musl" ;;
-        microblazeel) prefix="microblazeel-linux-musl" ;;
-        mips32v2be)  prefix="mips-linux-musl" ;;
-        mips32v2le)  prefix="mipsel-linux-musl" ;;
-        mips64)      prefix="mips64-linux-musl" ;;
         mips64le)    prefix="mips64el-linux-musl" ;;
-        or1k)        prefix="or1k-linux-musl" ;;
-        ppc32be)     prefix="powerpc-linux-musl" ;;
-        powerpcle)   prefix="powerpcle-linux-musl" ;;
-        powerpc64)   prefix="powerpc64-linux-musl" ;;
         ppc64le)     prefix="powerpc64le-linux-musl" ;;
-        riscv32)     prefix="riscv32-linux-musl" ;;
         riscv64)     prefix="riscv64-linux-musl" ;;
         s390x)       prefix="s390x-linux-musl" ;;
-        sh2)         prefix="sh2-linux-musl" ;;
-        sh2eb)       prefix="sh2eb-linux-musl" ;;
+        mips64)      prefix="mips64-linux-musl" ;;
+        armv5)       prefix="arm-linux-musleabi" ;;
+        armv6)       prefix="armv6-linux-musleabihf" ;;
+        ppc32)       prefix="powerpc-linux-musl" ;;
+        sparc64)     prefix="sparc64-linux-musl" ;;
         sh4)         prefix="sh4-linux-musl" ;;
-        sh4eb)       prefix="sh4eb-linux-musl" ;;
+        mips32)      prefix="mips-linux-musl" ;;
+        mips32el)    prefix="mipsel-linux-musl" ;;
+        riscv32)     prefix="riscv32-linux-musl" ;;
+        microblazeel) prefix="microblazeel-linux-musl" ;;
+        microblazebe) prefix="microblaze-linux-musl" ;;
+        nios2)       prefix="nios2-linux-musl" ;;
+        openrisc)    prefix="or1k-linux-musl" ;;
+        arcle)       prefix="arc-linux-musl" ;;
+        m68k)        prefix="m68k-linux-musl" ;;
         *)           log_tool "$arch" "Unknown architecture"; return 1 ;;
     esac
     

@@ -12,7 +12,6 @@ if [[ "$SCRIPT_DIR" == */lib ]]; then
 fi
 
 source "$SCRIPT_DIR/lib/common.sh"
-source "$SCRIPT_DIR/lib/toolchain.sh"
 
 # Global variables for tls-preloader source
 TLS_PRELOADER_REPO="https://github.com/f0rw4rd/tls-preloader.git"
@@ -27,6 +26,13 @@ clone_tls_preloader() {
     fi
     
     TLS_PRELOADER_SRC_DIR="/tmp/tls-preloader-src-$$"
+    
+    # Clean up any existing directory first
+    if [ -d "$TLS_PRELOADER_SRC_DIR" ]; then
+        log "Cleaning up existing tls-preloader directory..."
+        rm -rf "$TLS_PRELOADER_SRC_DIR"
+    fi
+    
     log "Cloning tls-preloader repository..."
     
     git clone --depth 1 "$TLS_PRELOADER_REPO" "$TLS_PRELOADER_SRC_DIR" || {
@@ -55,30 +61,29 @@ build_tls_noverify() {
     
     log "Building tls-noverify for $arch..."
     
-    ensure_toolchain "$arch" || {
+    # Get toolchain info for glibc build
+    local toolchain_dir="/build/toolchains-preload/$arch"
+    if [ ! -d "$toolchain_dir" ]; then
         log_error "Toolchain not available for $arch"
         return 1
-    }
-    
-    local toolchain_dir=$(get_toolchain_dir "$arch")
-    local cross_compile=$(get_toolchain_prefix "$arch")
-    local CC="${toolchain_dir}/bin/${cross_compile}-gcc"
-    local STRIP="${toolchain_dir}/bin/${cross_compile}-strip"
-    
-    if [ ! -x "$CC" ]; then
-        local actual_gcc=$(find "${toolchain_dir}/bin" -name "*-gcc" -type f -executable | grep -v ".br_real" | head -1)
-        if [ -n "$actual_gcc" ]; then
-            CC="$actual_gcc"
-            log_debug "Using gcc: $CC"
-        else
-            log_error "No gcc found in ${toolchain_dir}/bin"
-            return 1
-        fi
     fi
     
-    if [ ! -x "$STRIP" ]; then
-        STRIP=$(find "${toolchain_dir}/bin" -name "*-strip" -type f -executable | head -1)
+    # Find the actual gcc compiler
+    local CC=$(find "${toolchain_dir}/bin" -name "*-gcc" -type f -executable | grep -v ".br_real" | head -1)
+    local STRIP=$(find "${toolchain_dir}/bin" -name "*-strip" -type f -executable | head -1)
+    
+    if [ -z "$CC" ] || [ ! -x "$CC" ]; then
+        log_error "No gcc found in ${toolchain_dir}/bin"
+        return 1
     fi
+    
+    if [ -z "$STRIP" ] || [ ! -x "$STRIP" ]; then
+        log "Warning: strip not found, binary will not be stripped"
+        STRIP="true"  # Use 'true' as a no-op
+    fi
+    
+    # Save current directory
+    local orig_dir="$(pwd)"
     
     # Build in the source directory
     cd "$TLS_PRELOADER_SRC_DIR"
@@ -96,6 +101,7 @@ build_tls_noverify() {
     make || {
         log_error "Make failed"
         make clean >/dev/null 2>&1 || true
+        cd "$orig_dir"
         return 1
     }
     
@@ -103,6 +109,7 @@ build_tls_noverify() {
     if [ ! -f "libtlsnoverify.so" ]; then
         log_error "libtlsnoverify.so was not created"
         make clean >/dev/null 2>&1 || true
+        cd "$orig_dir"
         return 1
     fi
     
@@ -115,6 +122,9 @@ build_tls_noverify() {
     
     # Clean up build artifacts
     make clean >/dev/null 2>&1 || true
+    
+    # Return to original directory
+    cd "$orig_dir"
     
     return 0
 }
@@ -133,15 +143,49 @@ build_tls_noverify_musl() {
     
     log "Building tls-noverify for $arch (musl)..."
     
+    # Map architecture to musl toolchain prefix
+    local prefix=""
+    case "$arch" in
+        x86_64)      prefix="x86_64-linux-musl" ;;
+        aarch64)     prefix="aarch64-linux-musl" ;;
+        aarch64be)   prefix="aarch64_be-linux-musl" ;;
+        arm32v7le)   prefix="armv7l-linux-musleabihf" ;;
+        i486)        prefix="i486-linux-musl" ;;
+        mips64le)    prefix="mips64el-linux-musl" ;;
+        ppc64le)     prefix="powerpc64le-linux-musl" ;;
+        riscv64)     prefix="riscv64-linux-musl" ;;
+        s390x)       prefix="s390x-linux-musl" ;;
+        mips64)      prefix="mips64-linux-musl" ;;
+        armv5)       prefix="arm-linux-musleabi" ;;
+        armv6)       prefix="armv6-linux-musleabihf" ;;
+        ppc32)       prefix="powerpc-linux-musl" ;;
+        sparc64)     prefix="sparc64-linux-musl" ;;
+        sh4)         prefix="sh4-linux-musl" ;;
+        mips32)      prefix="mips-linux-musl" ;;
+        mips32el)    prefix="mipsel-linux-musl" ;;
+        riscv32)     prefix="riscv32-linux-musl" ;;
+        microblazeel) prefix="microblazeel-linux-musl" ;;
+        microblazebe) prefix="microblaze-linux-musl" ;;
+        nios2)       prefix="nios2-linux-musl" ;;
+        openrisc)    prefix="or1k-linux-musl" ;;
+        arcle)       prefix="arc-linux-musl" ;;
+        m68k)        prefix="m68k-linux-musl" ;;
+        *)           log_error "Unknown architecture: $arch"; return 1 ;;
+    esac
+    
     # For musl builds, we use the musl toolchain
-    local toolchain_dir="/toolchains/$arch"
+    local toolchain_dir="/build/toolchains/${prefix}-cross"
     if [ ! -d "$toolchain_dir" ]; then
-        log_error "Musl toolchain not found for $arch"
-        return 1
+        # Try without /build prefix (for main build system compatibility)
+        toolchain_dir="/toolchains/${prefix}-cross"
+        if [ ! -d "$toolchain_dir" ]; then
+            log_error "Musl toolchain not found for $arch at $toolchain_dir"
+            return 1
+        fi
     fi
     
-    local CC="${toolchain_dir}/bin/gcc"
-    local STRIP="${toolchain_dir}/bin/strip"
+    local CC="${toolchain_dir}/bin/${prefix}-gcc"
+    local STRIP="${toolchain_dir}/bin/${prefix}-strip"
     
     if [ ! -x "$CC" ]; then
         CC=$(find "${toolchain_dir}/bin" -name "*-gcc" -type f -executable | head -1)
@@ -154,6 +198,9 @@ build_tls_noverify_musl() {
     if [ ! -x "$STRIP" ]; then
         STRIP=$(find "${toolchain_dir}/bin" -name "*-strip" -type f -executable | head -1)
     fi
+    
+    # Save current directory
+    local orig_dir="$(pwd)"
     
     # Build in the source directory
     cd "$TLS_PRELOADER_SRC_DIR"
@@ -171,6 +218,7 @@ build_tls_noverify_musl() {
     make || {
         log_error "Make failed"
         make clean >/dev/null 2>&1 || true
+        cd "$orig_dir"
         return 1
     }
     
@@ -178,6 +226,7 @@ build_tls_noverify_musl() {
     if [ ! -f "libtlsnoverify.so" ]; then
         log_error "libtlsnoverify.so was not created"
         make clean >/dev/null 2>&1 || true
+        cd "$orig_dir"
         return 1
     fi
     
@@ -191,12 +240,17 @@ build_tls_noverify_musl() {
     # Clean up build artifacts
     make clean >/dev/null 2>&1 || true
     
+    # Return to original directory
+    cd "$orig_dir"
+    
     return 0
 }
 
 # Cleanup function to remove cloned repository
 cleanup_tls_preloader() {
     if [ -n "$TLS_PRELOADER_SRC_DIR" ] && [ -d "$TLS_PRELOADER_SRC_DIR" ]; then
+        # Make sure we're not in the directory we're about to delete
+        cd /tmp 2>/dev/null || cd /
         log_debug "Cleaning up tls-preloader source directory"
         rm -rf "$TLS_PRELOADER_SRC_DIR"
         TLS_PRELOADER_SRC_DIR=""

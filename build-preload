@@ -41,6 +41,17 @@ while [[ $# -gt 0 ]]; do
             ;;
         --libc)
             LIBC_TYPE="$2"
+            # Validate libc selection
+            case "$LIBC_TYPE" in
+                glibc|musl|both)
+                    # Valid options
+                    ;;
+                *)
+                    echo "Error: Invalid libc type '$LIBC_TYPE'"
+                    echo "Valid options are: glibc, musl, both"
+                    exit 1
+                    ;;
+            esac
             shift 2
             ;;
         --both)
@@ -61,6 +72,7 @@ LIBRARY:
   shell-bind         Open bind shell on BIND_PORT (default: 4444)
   shell-reverse      Reverse shell to RHOST:RPORT (default port: 4444)
   shell-fifo         Execute commands from FIFO_PATH (default: /tmp/cmd.fifo)
+  tls-noverify       Disable TLS certificate verification
 
 OPTIONS:
   --arch ARCH      Build for specific architecture only
@@ -81,6 +93,7 @@ EXAMPLES:
   $0 libdesock                    # Build libdesock for all architectures
   $0 --arch x86_64                # Build all libraries for x86_64
   $0 libdesock --arch arm         # Build libdesock for ARM
+  $0 tls-noverify --arch x86_64   # Build tls-noverify for x86_64
 
 OUTPUT:
   Libraries are placed in: 
@@ -95,7 +108,7 @@ NOTE:
 EOF
             exit 0
             ;;
-        libdesock|shell-env|shell-helper|shell-bind|shell-reverse|shell-fifo)
+        libdesock|shell-env|shell-helper|shell-bind|shell-reverse|shell-fifo|tls-noverify)
             LIBRARIES="$1"
             shift
             ;;

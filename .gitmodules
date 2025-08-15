@@ -1,3 +1,0 @@
-[submodule "preload-libs/tls-preloader"]
-	path = preload-libs/tls-preloader
-	url = https://github.com/f0rw4rd/tls-preloader.git
