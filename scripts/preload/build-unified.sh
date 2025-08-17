@@ -28,7 +28,8 @@ LIBC_TYPE="${LIBC_TYPE:-glibc}"
 
 ALL_LIBS=(libdesock shell-env shell-helper shell-bind shell-reverse shell-fifo tls-noverify)
 
-ALL_ARCHS=(x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el riscv32 microblazeel microblazebe nios2 openrisc arcle m68k)
+# Mix of glibc-style names and canonical names for compatibility
+ALL_ARCHS=(x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x aarch64be mips64 armv5 armv6 ppc32 sparc64 sh2 sh2eb sh4 sh4eb mips32 mips32el riscv32 microblazeel microblazebe nios2 openrisc arcle m68k arm32v5le arm32v5lehf arm32v7lehf armeb armv7m armv7r ix86le mips32v2le mips32v2be powerpc64 powerpcle ppc32be or1k)
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -48,7 +49,8 @@ while [[ $# -gt 0 ]]; do
             LIBS_TO_BUILD="$1"
             shift
             ;;
-        x86_64|aarch64|arm32v7le|i486|mips64le|ppc64le|riscv64|s390x|aarch64be|mips64|armv5|armv6|ppc32|sparc64|sh4|mips32|mips32el|riscv32|microblazeel|microblazebe|nios2|openrisc|arcle|m68k)
+        x86_64|aarch64|arm32v7le|i486|mips64le|ppc64le|riscv64|s390x|aarch64be|mips64|armv5|armv6|ppc32|sparc64|sh2|sh2eb|sh4|sh4eb|mips32|mips32el|riscv32|microblazeel|microblazebe|nios2|openrisc|arcle|m68k|\
+        arm32v5le|arm32v5lehf|arm32v7lehf|armeb|armv7m|armv7r|ix86le|mips32v2le|mips32v2be|powerpc64|powerpcle|ppc32be|or1k)
             ARCHS_TO_BUILD="$1"
             shift
             ;;

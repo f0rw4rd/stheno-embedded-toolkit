@@ -26,7 +26,14 @@ while [ $# -gt 0 ]; do
             LIBS_TO_BUILD="$1"
             shift
             ;;
-        x86_64|aarch64|arm32v7le|i486|mips64le|ppc64le|riscv64|s390x|aarch64be|mips64|armv5|armv6|ppc32|sparc64|sh4|mips32|mips32el|riscv32|microblazeel|microblazebe|nios2|openrisc|arcle|m68k)
+        arm32v5le|arm32v5lehf|arm32v7le|arm32v7lehf|armeb|armv6|armv7m|armv7r|\
+        aarch64|aarch64_be|\
+        i486|ix86le|x86_64|\
+        mips32v2le|mips32v2be|mipsn32|mipsn32el|mips64|mips64le|mips64n32|mips64n32el|\
+        ppc32be|powerpcle|powerpc64|ppc64le|\
+        sh2|sh2eb|sh4|sh4eb|\
+        microblaze|microblazeel|or1k|m68k|s390x|\
+        riscv32|riscv64)
             ARCHS_TO_BUILD="$1"
             shift
             ;;
@@ -46,7 +53,8 @@ fi
 
 if [ "$ARCHS_TO_BUILD" = "all" ]; then
     # Use the same architectures as glibc for consistency
-    ARCHS_TO_BUILD="x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el riscv32 microblazeel microblazebe nios2 openrisc arcle m68k"
+    # Use canonical musl architecture names from main build system
+    ARCHS_TO_BUILD="arm32v5le arm32v5lehf arm32v7le arm32v7lehf armeb armv6 armv7m armv7r aarch64 aarch64_be i486 ix86le x86_64 mips32v2le mips32v2be mipsn32 mipsn32el mips64 mips64le mips64n32 mips64n32el ppc32be powerpcle powerpc64 ppc64le sh2 sh2eb sh4 sh4eb microblaze microblazeel or1k m68k s390x riscv32 riscv64"
 fi
 
 build_preload_musl() {
@@ -83,43 +91,33 @@ build_preload_musl() {
         return 0
     fi
     
-    local prefix=""
-    case "$arch" in
-        x86_64)      prefix="x86_64-linux-musl" ;;
-        aarch64)     prefix="aarch64-linux-musl" ;;
-        aarch64be)   prefix="aarch64_be-linux-musl" ;;
-        arm32v7le)   prefix="armv7l-linux-musleabihf" ;;
-        i486)        prefix="i486-linux-musl" ;;
-        mips64le)    prefix="mips64el-linux-musl" ;;
-        ppc64le)     prefix="powerpc64le-linux-musl" ;;
-        riscv64)     prefix="riscv64-linux-musl" ;;
-        s390x)       prefix="s390x-linux-musl" ;;
-        mips64)      prefix="mips64-linux-musl" ;;
-        armv5)       prefix="arm-linux-musleabi" ;;
-        armv6)       prefix="armv6-linux-musleabihf" ;;
-        ppc32)       prefix="powerpc-linux-musl" ;;
-        sparc64)     prefix="sparc64-linux-musl" ;;
-        sh4)         prefix="sh4-linux-musl" ;;
-        mips32)      prefix="mips-linux-musl" ;;
-        mips32el)    prefix="mipsel-linux-musl" ;;
-        riscv32)     prefix="riscv32-linux-musl" ;;
-        microblazeel) prefix="microblazeel-linux-musl" ;;
-        microblazebe) prefix="microblaze-linux-musl" ;;
-        nios2)       prefix="nios2-linux-musl" ;;
-        openrisc)    prefix="or1k-linux-musl" ;;
-        arcle)       prefix="arc-linux-musl" ;;
-        m68k)        prefix="m68k-linux-musl" ;;
-        *)           log_tool "$arch" "Unknown architecture"; return 1 ;;
-    esac
+    # Source the common architecture mapping
+    source "$SCRIPT_DIR/preload/lib/compile-musl.sh"
     
-    local toolchain_dir="/build/toolchains/${prefix}-cross"
+    # Map glibc-style arch names to canonical musl names
+    local canonical_arch=$(map_arch_name "$arch")
+    
+    # Handle glibc-only architectures
+    if [[ "$canonical_arch" == *"[glibc-only]"* ]]; then
+        log_tool "$arch" "Not supported in musl builds (glibc-only)"
+        return 1
+    fi
+    
+    # Get musl toolchain prefix using the common function
+    local prefix=$(get_musl_toolchain_prefix "$canonical_arch")
+    
+    if [ -z "$prefix" ]; then
+        log_tool "$arch" "Unknown architecture"
+        return 1
+    fi
+    
+    # In main build system, toolchain dir is named by canonical arch
+    local toolchain_dir="/build/toolchains/${canonical_arch}"
     if [ ! -d "$toolchain_dir" ]; then
-        log_tool "$arch" "Toolchain not found, building it first..."
-        cd /build
-        /scripts/build-unified.sh strace "$arch" >/dev/null 2>&1 || true
-        
+        # Try the preload-style naming with -cross suffix
+        toolchain_dir="/build/toolchains/${prefix}-cross"
         if [ ! -d "$toolchain_dir" ]; then
-            log_tool "$arch" "Failed to create toolchain"
+            log_tool "$arch" "Toolchain not found for $canonical_arch"
             return 1
         fi
     fi

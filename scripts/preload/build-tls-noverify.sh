@@ -143,44 +143,39 @@ build_tls_noverify_musl() {
     
     log "Building tls-noverify for $arch (musl)..."
     
-    # Map architecture to musl toolchain prefix
-    local prefix=""
-    case "$arch" in
-        x86_64)      prefix="x86_64-linux-musl" ;;
-        aarch64)     prefix="aarch64-linux-musl" ;;
-        aarch64be)   prefix="aarch64_be-linux-musl" ;;
-        arm32v7le)   prefix="armv7l-linux-musleabihf" ;;
-        i486)        prefix="i486-linux-musl" ;;
-        mips64le)    prefix="mips64el-linux-musl" ;;
-        ppc64le)     prefix="powerpc64le-linux-musl" ;;
-        riscv64)     prefix="riscv64-linux-musl" ;;
-        s390x)       prefix="s390x-linux-musl" ;;
-        mips64)      prefix="mips64-linux-musl" ;;
-        armv5)       prefix="arm-linux-musleabi" ;;
-        armv6)       prefix="armv6-linux-musleabihf" ;;
-        ppc32)       prefix="powerpc-linux-musl" ;;
-        sparc64)     prefix="sparc64-linux-musl" ;;
-        sh4)         prefix="sh4-linux-musl" ;;
-        mips32)      prefix="mips-linux-musl" ;;
-        mips32el)    prefix="mipsel-linux-musl" ;;
-        riscv32)     prefix="riscv32-linux-musl" ;;
-        microblazeel) prefix="microblazeel-linux-musl" ;;
-        microblazebe) prefix="microblaze-linux-musl" ;;
-        nios2)       prefix="nios2-linux-musl" ;;
-        openrisc)    prefix="or1k-linux-musl" ;;
-        arcle)       prefix="arc-linux-musl" ;;
-        m68k)        prefix="m68k-linux-musl" ;;
-        *)           log_error "Unknown architecture: $arch"; return 1 ;;
-    esac
+    # Source the common architecture mapping and compile-musl functions
+    source "/build/scripts/lib/arch_map.sh"
+    source "/build/scripts/preload/lib/compile-musl.sh"
     
-    # For musl builds, we use the musl toolchain
-    local toolchain_dir="/build/toolchains/${prefix}-cross"
+    # Map glibc-style arch names to canonical musl names
+    local canonical_arch=$(map_arch_name "$arch")
+    
+    # Handle glibc-only architectures
+    if [[ "$canonical_arch" == *"[glibc-only]"* ]]; then
+        log_error "$arch is not supported in musl builds"
+        return 1
+    fi
+    
+    # Get musl toolchain prefix using the common function
+    local prefix=$(get_musl_toolchain_prefix "$canonical_arch")
+    
+    if [ -z "$prefix" ]; then
+        log_error "No musl toolchain mapping for architecture: $arch"
+        return 1
+    fi
+    
+    # In main build system, toolchain dir is named by canonical arch
+    local toolchain_dir="/build/toolchains/${canonical_arch}"
     if [ ! -d "$toolchain_dir" ]; then
-        # Try without /build prefix (for main build system compatibility)
-        toolchain_dir="/toolchains/${prefix}-cross"
+        # Try the preload-style naming with -cross suffix
+        toolchain_dir="/build/toolchains/${prefix}-cross"
         if [ ! -d "$toolchain_dir" ]; then
-            log_error "Musl toolchain not found for $arch at $toolchain_dir"
-            return 1
+            # Try without /build prefix
+            toolchain_dir="/toolchains/${canonical_arch}"
+            if [ ! -d "$toolchain_dir" ]; then
+                log_error "Musl toolchain not found for $arch (canonical: $canonical_arch)"
+                return 1
+            fi
         fi
     fi
     
@@ -265,8 +260,10 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     if [ $# -eq 0 ]; then
         echo "Usage: $0 <architecture|all>"
         echo "Architectures: x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x"
-        echo "               aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el"
+        echo "               aarch64be mips64 armv5 armv6 ppc32 sparc64 sh2 sh2eb sh4 sh4eb mips32 mips32el"
         echo "               riscv32 microblazeel microblazebe nios2 openrisc arcle m68k"
+        echo "               arm32v5le arm32v5lehf arm32v7lehf armeb armv7m armv7r ix86le"
+        echo "               mips32v2le mips32v2be powerpc64 powerpcle ppc32be or1k"
         exit 1
     fi
     
@@ -274,8 +271,10 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     
     if [ "$arch" = "all" ]; then
         for a in x86_64 aarch64 arm32v7le i486 mips64le ppc64le riscv64 s390x \
-                 aarch64be mips64 armv5 armv6 ppc32 sparc64 sh4 mips32 mips32el \
-                 riscv32 microblazeel microblazebe nios2 openrisc arcle m68k; do
+                 aarch64be mips64 armv5 armv6 ppc32 sparc64 sh2 sh2eb sh4 sh4eb mips32 mips32el \
+                 riscv32 microblazeel microblazebe nios2 openrisc arcle m68k \
+                 arm32v5le arm32v5lehf arm32v7lehf armeb armv7m armv7r ix86le \
+                 mips32v2le mips32v2be powerpc64 powerpcle ppc32be or1k; do
             build_tls_noverify "$a" || log_error "Failed to build for $a"
         done
     else
