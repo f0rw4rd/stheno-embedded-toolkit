@@ -84,6 +84,15 @@ LD_PRELOAD=./libtlsnoverify.so curl https://expired.badssl.com/
 TLS_NOVERIFY_DEBUG=1 LD_PRELOAD=./libtlsnoverify.so wget https://self-signed.badssl.com/
 ```
 
+### Detecting System Architecture
+
+To determine your current architecture and libc type:
+
+```bash
+arch=$(uname -m);libc=$(ldd --version 2>&1|grep -qi musl&&echo musl||echo glibc);echo "$arch/$libc"
+# Output: x86_64/glibc or aarch64/musl etc.
+```
+
 ## Build System Structure
 
 ```

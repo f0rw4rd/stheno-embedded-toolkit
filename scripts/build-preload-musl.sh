@@ -22,7 +22,7 @@ while [ $# -gt 0 ]; do
             fi
             shift
             ;;
-        shell-env|shell-helper|shell-bind|shell-reverse|shell-fifo|tls-noverify)
+        libdesock|shell-env|shell-helper|shell-bind|shell-reverse|shell-fifo|tls-noverify)
             LIBS_TO_BUILD="$1"
             shift
             ;;
@@ -41,7 +41,7 @@ done
 [ -z "$ARCHS_TO_BUILD" ] && ARCHS_TO_BUILD="all"
 
 if [ "$LIBS_TO_BUILD" = "all" ]; then
-    LIBS_TO_BUILD="shell-env shell-helper shell-bind shell-reverse shell-fifo tls-noverify"
+    LIBS_TO_BUILD="libdesock shell-env shell-helper shell-bind shell-reverse shell-fifo tls-noverify"
 fi
 
 if [ "$ARCHS_TO_BUILD" = "all" ]; then
@@ -60,6 +60,15 @@ build_preload_musl() {
         source "/build/scripts/preload/build-tls-noverify.sh"
         # Call the musl build function
         build_tls_noverify_musl "$arch"
+        return $?
+    fi
+    
+    # Special handling for libdesock - use the dedicated build script
+    if [ "$lib" = "libdesock" ]; then
+        # Source the libdesock build script
+        source "/build/scripts/preload/build-libdesock.sh"
+        # Call the musl build function
+        build_libdesock_musl "$arch"
         return $?
     fi
     

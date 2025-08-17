@@ -66,7 +66,7 @@ Build preload libraries for debugging and analysis using glibc toolchains.
 
 LIBRARY:
   all                Build all preload libraries (default)
-  libdesock          Socket desocketing library for fuzzing (glibc only)
+  libdesock          Socket desocketing library for fuzzing
   shell-env          Execute commands from EXEC_CMD environment variable
   shell-helper       Execute /dev/shm/helper.sh script
   shell-bind         Open bind shell on BIND_PORT (default: 4444)

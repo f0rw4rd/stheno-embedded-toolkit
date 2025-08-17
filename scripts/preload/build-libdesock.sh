@@ -171,6 +171,139 @@ build_libdesock() {
     return 0
 }
 
+build_libdesock_musl() {
+    local arch="$1"
+    local output_dir="/build/output-preload/musl/$arch"
+    local build_dir="/tmp/libdesock-musl-build-${arch}-$$"
+    
+    if [ -f "$output_dir/libdesock.so" ]; then
+        log "libdesock.so already built for $arch (musl)"
+        return 0
+    fi
+    
+    log "Building libdesock for $arch with musl..."
+    
+    # Source logging functions if not already sourced
+    if ! type log >/dev/null 2>&1; then
+        source "/build/scripts/lib/logging.sh"
+    fi
+    
+    # Get musl toolchain prefix
+    local prefix=""
+    case "$arch" in
+        x86_64)      prefix="x86_64-linux-musl" ;;
+        aarch64)     prefix="aarch64-linux-musl" ;;
+        aarch64be)   prefix="aarch64_be-linux-musl" ;;
+        arm32v7le)   prefix="armv7l-linux-musleabihf" ;;
+        i486)        prefix="i486-linux-musl" ;;
+        mips64le)    prefix="mips64el-linux-musl" ;;
+        ppc64le)     prefix="powerpc64le-linux-musl" ;;
+        riscv64)     prefix="riscv64-linux-musl" ;;
+        s390x)       prefix="s390x-linux-musl" ;;
+        mips64)      prefix="mips64-linux-musl" ;;
+        armv5)       prefix="arm-linux-musleabi" ;;
+        armv6)       prefix="armv6-linux-musleabihf" ;;
+        ppc32)       prefix="powerpc-linux-musl" ;;
+        sparc64)     prefix="sparc64-linux-musl" ;;
+        sh4)         prefix="sh4-linux-musl" ;;
+        mips32)      prefix="mips-linux-musl" ;;
+        mips32el)    prefix="mipsel-linux-musl" ;;
+        riscv32)     prefix="riscv32-linux-musl" ;;
+        microblazeel) prefix="microblazeel-linux-musl" ;;
+        microblazebe) prefix="microblaze-linux-musl" ;;
+        nios2)       prefix="nios2-linux-musl" ;;
+        openrisc)    prefix="or1k-linux-musl" ;;
+        arcle)       prefix="arc-linux-musl" ;;
+        m68k)        prefix="m68k-linux-musl" ;;
+        *)           log "Unknown architecture: $arch"; return 1 ;;
+    esac
+    
+    local toolchain_dir="/build/toolchains/${prefix}-cross"
+    if [ ! -d "$toolchain_dir" ]; then
+        log_error "Musl toolchain not found for $arch"
+        return 1
+    fi
+    
+    local CC="${toolchain_dir}/bin/${prefix}-gcc"
+    
+    if [ ! -x "$CC" ]; then
+        log_error "Compiler not found: $CC"
+        return 1
+    fi
+    
+    local export_str="export CC='$CC' PATH='${toolchain_dir}/bin:$PATH'"
+    eval "$export_str"
+    
+    mkdir -p "$output_dir"
+    
+    # Download source if needed
+    local source_dir="/build/sources"
+    mkdir -p "$source_dir"
+    
+    local source_file="$source_dir/libdesock-f0rw4rd-${LIBDESOCK_VERSION}.tar.gz"
+    if [ ! -f "$source_file" ]; then
+        log "Downloading libdesock source from f0rw4rd fork..."
+        wget -q "$LIBDESOCK_URL" -O "$source_file" || {
+            log_error "Failed to download libdesock"
+            return 1
+        }
+    fi
+    
+    mkdir -p "$build_dir"
+    cd "$build_dir"
+    
+    tar xzf "$source_file"
+    if [ -d "libdesock-${LIBDESOCK_VERSION}" ]; then
+        cd "libdesock-${LIBDESOCK_VERSION}"
+    else
+        cd "libdesock-main"
+    fi
+    
+    local desock_arch=$(get_desock_arch "$arch")
+    
+    # Musl-specific flags - include the include directory and architecture-specific headers
+    local CFLAGS="-fPIC -O2 -Wall -DDESOCK_ARCH_$desock_arch -DTRANSPARENT"
+    CFLAGS="$CFLAGS -I./src/include -I./src/include/arch/$desock_arch"
+    # Add required defines
+    CFLAGS="$CFLAGS -DMAX_CONNS=16 -DFD_TABLE_SIZE=1024"
+    # Add desock client/server defines - need both for musl build
+    CFLAGS="$CFLAGS -D'desock_client=1' -D'desock_server=1'"
+    # Add musl-specific defines to fix type conflicts
+    CFLAGS="$CFLAGS -D_GNU_SOURCE"
+    local LDFLAGS="-shared -Wl,-e,__libdesock_main -lpthread -static-libgcc"
+    
+    local sources="src/main.c src/desock.c src/stub_sockaddr.c src/syscall.c \
+                   src/accept.c src/bind.c src/connect.c src/socket.c \
+                   src/listen.c src/close.c src/test_helper.c src/dup.c \
+                   src/getpeername.c src/getsockname.c src/epoll.c src/hooks.c \
+                   src/multi.c src/peekbuffer.c src/poll.c src/read.c \
+                   src/select.c src/sendfile.c src/shutdown.c src/sockopt.c \
+                   src/write.c"
+    
+    log "Compiling libdesock with musl..."
+    $CC $CFLAGS $sources $LDFLAGS -o libdesock.so || {
+        log_error "Compilation failed"
+        cd /
+        rm -rf "$build_dir"
+        return 1
+    }
+    
+    cp libdesock.so "$output_dir/"
+    
+    local strip_cmd="${toolchain_dir}/bin/${prefix}-strip"
+    if [ -x "$strip_cmd" ]; then
+        $strip_cmd "$output_dir/libdesock.so" 2>/dev/null || true
+    fi
+    
+    local size=$(ls -lh "$output_dir/libdesock.so" | awk '{print $5}')
+    log "Successfully built libdesock.so for $arch with musl ($size)"
+    
+    cd /
+    rm -rf "$build_dir"
+    
+    return 0
+}
+
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     if [ $# -eq 0 ]; then
         echo "Usage: $0 <architecture|all>"
