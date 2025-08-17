@@ -28,6 +28,9 @@ The name "Stheno" is a playful reference - in Greek mythology, Stheno was one of
 
 # Build ltrace for specific architecture
 ./build ltrace --arch x86_64
+
+# Build CAN utilities (creates can-utils/ subdirectory)
+./build can-utils --arch arm32v7le
 ```
 
 ## Docker Build
@@ -127,6 +130,7 @@ arch=$(uname -m);libc=$(ldd --version 2>&1|grep -qi musl&&echo musl||echo glibc)
 - **nmap** - Network exploration tool
 - **ply** - BPF-based dynamic tracer (eBPF/kprobes)
 - **dropbear** - Lightweight SSH server/client (includes dbclient, scp, dropbearkey)
+- **can-utils** - CAN bus utilities (20 tools including candump, cansend, canplayer, etc.)
 
 ### Glibc Static Tools (new)
 - **ltrace** - Library call tracer (traces dynamic library calls and signals)

@@ -115,19 +115,22 @@ setup_arch() {
         armv7r)
             CROSS_COMPILE="armv7r-linux-musleabihf-"
             HOST="armv7r-linux-musleabihf"
-            CFLAGS_ARCH="-march=armv7-r"
+            # Toolchain defaults to armv5te+fp, not actual armv7-r
+            CFLAGS_ARCH=""
             CONFIG_ARCH="arm"
             ;;
         mipsn32)
             CROSS_COMPILE="mips-linux-musln32sf-"
             HOST="mips-linux-musln32sf"
-            CFLAGS_ARCH="-mabi=n32"
+            # Despite the name, this toolchain uses O32 ABI by default
+            CFLAGS_ARCH=""
             CONFIG_ARCH="mips"
             ;;
         mipsn32el)
             CROSS_COMPILE="mipsel-linux-musln32sf-"
             HOST="mipsel-linux-musln32sf"
-            CFLAGS_ARCH="-mabi=n32"
+            # Despite the name, this toolchain uses O32 ABI by default
+            CFLAGS_ARCH=""
             CONFIG_ARCH="mips"
             ;;
         mips64n32)

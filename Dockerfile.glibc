@@ -7,48 +7,28 @@ FROM ubuntu:20.04
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies for building and using pre-built glibc toolchains
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
-    # Build essentials
     build-essential \
-    git \
-    autoconf \
-    automake \
-    libtool \
-    libtool-bin \
+    gcc g++ make automake autoconf libtool libtool-bin \
     pkg-config \
-    # Download tools
-    wget \
-    curl \
-    # Archive tools
-    tar \
-    gzip \
-    bzip2 \
-    xz-utils \
-    # Python
-    python3 \
-    python3-pip \
-    # Build dependencies
-    bison \
-    flex \
+    git wget curl \
+    tar gzip bzip2 xz-utils \
+    python3 python3-pip \
+    bison flex \
     texinfo \
     gawk \
     bc \
-    # Development libraries
     libncurses5-dev \
     libssl-dev \
     zlib1g-dev \
-    # Useful for debugging
     file \
     strace \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directories
-RUN mkdir -p /build/toolchains-preload && \
-    mkdir -p /build/output-preload && \
-    mkdir -p /build/logs-preload && \
-    mkdir -p /build/scripts/preload/lib && \
-    mkdir -p /build/configs
+RUN mkdir -p /build/toolchains-preload /build/output-preload /build/logs-preload && \
+    mkdir -p /build/scripts/preload/lib /build/configs
 
 # Create build user for consistency
 RUN useradd -m -s /bin/bash builder && \
@@ -67,11 +47,9 @@ COPY --chown=builder:builder scripts/preload/download-all-toolchains.sh /build/s
 COPY --chown=builder:builder scripts/preload/lib/common.sh /build/scripts/preload/lib/
 COPY --chown=builder:builder scripts/lib/logging.sh /build/scripts/lib/
 
-# Build argument for parallel downloads (default: 8)
-ARG TOOLCHAIN_PARALLEL_DOWNLOADS=8
-
 # Download all toolchains during build
-RUN TOOLCHAIN_PARALLEL_DOWNLOADS=${TOOLCHAIN_PARALLEL_DOWNLOADS} /build/scripts/preload/download-all-toolchains.sh
+# This ensures toolchains are available at runtime
+RUN /build/scripts/preload/download-all-toolchains.sh
 
 # Default command
 CMD ["/build/scripts/preload/build-unified.sh"]

@@ -22,7 +22,6 @@ RUN apk update && apk add --no-cache \
     expat-dev \
     libffi-dev \
     gmp-dev mpc1-dev mpfr-dev \
-    ccache \
     bash \
     coreutils \
     linux-headers \
@@ -34,32 +33,28 @@ RUN apk update && apk add --no-cache \
     # GNU parallel for faster downloads
     parallel
 
-# Set ccache configuration
-ENV CCACHE_DIR=/root/.ccache
-ENV CCACHE_MAXSIZE=5G
-ENV CCACHE_COMPRESS=1
-ENV PATH="/usr/lib/ccache:$PATH"
-
 # Create directories
 RUN mkdir -p /build/sources /build/toolchains /build/deps-cache /build/output /build/logs && \
     mkdir -p /build/scripts
 
+# Create build user for consistency with glibc pipeline
+RUN adduser -D -s /bin/sh builder && \
+    echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Set ownership
+RUN chown -R builder:builder /build
+
+# Switch to builder user
+USER builder
 WORKDIR /build
 
 # Copy download script and required libraries
-COPY scripts/download-toolchains.sh /build/scripts/
-COPY scripts/lib/logging.sh /build/scripts/lib/
+COPY --chown=builder:builder scripts/download-toolchains.sh /build/scripts/
+COPY --chown=builder:builder scripts/lib/logging.sh /build/scripts/lib/
 
 # Download all musl toolchains during build
 # This ensures toolchains are available at runtime
-RUN echo "==================================" && \
-    echo "Downloading Musl Toolchains" && \
-    echo "==================================" && \
-    /build/scripts/download-toolchains.sh && \
-    echo "==================================" && \
-    echo "Toolchains downloaded successfully" && \
-    echo "==================================" && \
-    ls -la /build/toolchains/
+RUN /build/scripts/download-toolchains.sh
 
 # Default command
 CMD ["/bin/bash"]

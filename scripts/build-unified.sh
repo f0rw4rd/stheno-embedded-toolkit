@@ -96,7 +96,7 @@ ALL_ARCHS=(
     riscv32 riscv64
 )
 
-ALL_TOOLS=(strace busybox busybox_nodrop bash socat socat-ssl ncat ncat-ssl tcpdump gdbserver gdb nmap dropbear)
+ALL_TOOLS=(strace busybox busybox_nodrop bash socat socat-ssl ncat ncat-ssl tcpdump gdbserver nmap dropbear ply can-utils)
 
 if [ "$TOOL" = "all" ]; then
     TOOLS_TO_BUILD=("${ALL_TOOLS[@]}")
@@ -200,7 +200,13 @@ echo
 for arch in "${ARCHS_TO_BUILD[@]}"; do
     if ls /build/output/$arch/* >/dev/null 2>&1; then
         echo "$arch:"
-        ls -lh /build/output/$arch/ | grep -v "^total" | awk '{print "  " $9 " (" $5 ")"}'
+        # List regular files
+        ls -lh /build/output/$arch/ | grep -v "^total" | grep -v "^d" | awk '{print "  " $9 " (" $5 ")"}'
+        # Check for can-utils directory
+        if [ -d "/build/output/$arch/can-utils" ] && [ "$(ls -A /build/output/$arch/can-utils 2>/dev/null)" ]; then
+            count=$(ls -1 /build/output/$arch/can-utils | wc -l)
+            echo "  can-utils/ ($count tools)"
+        fi
     fi
 done
 

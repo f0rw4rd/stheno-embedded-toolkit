@@ -65,6 +65,7 @@ for arg in "$@"; do
             echo "  dropbear    Lightweight SSH server/client (includes scp)"
             echo "  ltrace      Library call tracer (glibc-based)"
             echo "  ply         Dynamic tracer using BPF (limited arch support, LE only)"
+            echo "  can-utils   CAN bus utilities (candump, cansend, etc.)"
             echo ""
             echo "OPTIONS:"
             echo "  --arch ARCH      Build for specific architecture only"
@@ -94,7 +95,7 @@ for arg in "$@"; do
             echo "  $0 strace --arch x86_64  # Build strace for x86_64 only"
             exit 0
             ;;
-        strace|busybox|busybox_nodrop|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|nmap|dropbear|ltrace|ply)
+        strace|busybox|busybox_nodrop|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|nmap|dropbear|ltrace|ply|can-utils)
             TOOLS="$arg"
             ;;
         arm32v5le|arm32v5lehf|arm32v7le|arm32v7lehf|armeb|armv6|armv7m|armv7r|\
@@ -104,7 +105,7 @@ for arg in "$@"; do
         sh2|sh2eb|sh4|sh4eb|\
         microblaze|microblazeel|or1k|m68k|s390x|\
         riscv32|riscv64|\
-        mips32|mips32el|armv5|ppc32|openrisc|aarch64be)  # Also accept glibc names
+        mips32|mips32el|armv5|ppc32|powerpc|powerpc32|openrisc|aarch64be|microblazebe)  # Also accept glibc names
             # Source arch mapping
             source "${PWD}/scripts/lib/arch_map.sh" 2>/dev/null || true
             if type map_arch_name >/dev/null 2>&1; then
@@ -140,7 +141,7 @@ if [ -n "$ARCHITECTURES" ] && [ "$ARCHITECTURES" != "all" ]; then
                  sh2 sh2eb sh4 sh4eb \
                  microblaze microblazeel or1k m68k s390x \
                  riscv32 riscv64 \
-                 mips32 mips32el armv5 ppc32 openrisc aarch64be"
+                 mips32 mips32el armv5 ppc32 powerpc powerpc32 openrisc aarch64be microblazebe"
     
     # Check if architecture is valid
     valid=false
@@ -159,7 +160,7 @@ if [ -n "$ARCHITECTURES" ] && [ "$ARCHITECTURES" != "all" ]; then
 fi
 
 echo "=============================================="
-echo "Embedded Toolkit Build Pipeline (Alpine)"
+echo "Embedded Toolkit Build Pipeline (Muslc Static)"
 echo "=============================================="
 echo "Start time: $(date)"
 echo
@@ -221,6 +222,12 @@ else
     DEBUG_CMD=""
 fi
 
+# Build musl Docker image if needed
+if ! docker image inspect sthenos-musl-builder >/dev/null 2>&1; then
+    echo "Building musl Docker image..."
+    docker build -t sthenos-musl-builder -f Dockerfile.musl .
+fi
+
 # Route ltrace to glibc build system
 if [ "$TOOLS" = "ltrace" ]; then
     # Build glibc Docker image if needed
@@ -241,8 +248,59 @@ if [ "$TOOLS" = "ltrace" ]; then
         $DEBUG_CMD /build/scripts/build-unified-glibc.sh \
         "$TOOLS" \
         "$ARCHITECTURES"
+elif [ "$TOOLS" = "all" ]; then
+    # When building all tools, we need to run both pipelines
+    echo "Building all tools for $ARCHITECTURES..."
+    echo ""
+    
+    # First, build all musl-based tools
+    echo "Phase 1: Building musl-based tools..."
+    docker run --rm \
+        -v "${PWD}:/build" \
+        -v sources-cache:/build/sources \
+        -v toolchains-cache:/build/toolchains \
+        -v deps-cache:/build/deps-cache \
+        $DEBUG_FLAGS \
+        -e SKIP_IF_EXISTS="${SKIP_IF_EXISTS:-true}" \
+        sthenos-musl-builder:latest \
+        $DEBUG_CMD /build/scripts/build-unified.sh \
+        --log \
+        "all" \
+        "$ARCHITECTURES"
+    
+    musl_result=$?
+    
+    # Then, build glibc-based tools (ltrace)
+    echo ""
+    echo "Phase 2: Building glibc-based tools (ltrace)..."
+    
+    # Build glibc Docker image if needed
+    if ! docker image inspect sthenos-glibc-builder >/dev/null 2>&1; then
+        echo "Building glibc Docker image..."
+        docker build -t sthenos-glibc-builder -f Dockerfile.glibc .
+    fi
+    
+    docker run --rm \
+        -v "${PWD}:/build" \
+        -v sources-cache:/build/sources \
+        -v toolchains-preload-cache:/build/toolchains-preload \
+        -v deps-cache:/build/deps-cache \
+        $DEBUG_FLAGS \
+        -e SKIP_IF_EXISTS="${SKIP_IF_EXISTS:-true}" \
+        sthenos-glibc-builder:latest \
+        $DEBUG_CMD /build/scripts/build-unified-glibc.sh \
+        "ltrace" \
+        "$ARCHITECTURES"
+    
+    glibc_result=$?
+    
+    # Exit with error if either pipeline failed
+    if [ $musl_result -ne 0 ] || [ $glibc_result -ne 0 ]; then
+        exit 1
+    fi
+    exit 0
 else
-    # Always use unified build system for musl tools
+    # Single tool build with musl
     exec docker run --rm \
         -v "${PWD}:/build" \
         -v sources-cache:/build/sources \

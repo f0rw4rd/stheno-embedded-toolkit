@@ -46,19 +46,19 @@ build_dependency_generic() {
     export CFLAGS="$cflags"
     export LDFLAGS="$ldflags"
     
-    if ! $configure_func "$arch" "$build_dir" "$cache_dir"; then
+    if ! $configure_func "$arch" "$build_dir" "$cache_dir" >&2; then
         log_error "Configuration failed for $dep_name on $arch"
         cleanup_build_dir "$build_dir"
         return 1
     fi
     
-    if ! $build_func "$arch" "$build_dir"; then
+    if ! $build_func "$arch" "$build_dir" >&2; then
         log_error "Build failed for $dep_name on $arch"
         cleanup_build_dir "$build_dir"
         return 1
     fi
     
-    if ! $install_func install "$cache_dir" "$build_dir"; then
+    if ! $install_func install "$cache_dir" "$build_dir" >&2; then
         log_error "Installation failed for $dep_name on $arch"
         cleanup_build_dir "$build_dir"
         return 1
@@ -100,6 +100,10 @@ configure_openssl() {
         sh*) openssl_target="linux-generic32" ;;
         *) openssl_target="linux-generic32" ;;
     esac
+    
+    # OpenSSL's Configure script uses CROSS_COMPILE env var if set,
+    # but we already have the full compiler paths in CC/CXX
+    unset CROSS_COMPILE
     
     ./Configure \
         --prefix="$cache_dir" \
@@ -250,7 +254,7 @@ install_zlib() {
 
 build_zlib_cached() {
     local arch=$1
-    local version="${2:-1.3}"
+    local version="${2:-1.3.1}"
     
     build_dependency_generic \
         "zlib" \

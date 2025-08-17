@@ -23,13 +23,22 @@ map_arch_name() {
         mips32el)    echo "mips32v2le" ;;
         armv5)       echo "arm32v5le" ;;
         ppc32)       echo "ppc32be" ;;
+        powerpc)     echo "ppc32be" ;;     # Another alias for ppc32
         openrisc)    echo "or1k" ;;
         aarch64be)   echo "aarch64_be" ;;
+        
+        # Glibc-only architectures (not available in musl)
+        sparc64|nios2|arcle|xtensa)
+            echo "[glibc-only] $input_arch not available in musl"
+            return 1
+            ;;
+        microblazebe) echo "microblaze" ;; # musl only has big-endian microblaze
         
         # Common aliases
         arm)         echo "arm32v7le" ;;  # Default ARM
         mips)        echo "mips32v2be" ;; # Default MIPS
         ppc)         echo "ppc32be" ;;    # Default PowerPC
+        powerpc32)   echo "ppc32be" ;;    # Yet another PowerPC alias
         
         *)
             echo "$input_arch"  # Return as-is if unknown
@@ -37,7 +46,7 @@ map_arch_name() {
     esac
 }
 
-# Reverse mapping for display purposes
+# Reverse mapping for display purposes (musl to glibc names)
 get_display_arch_name() {
     local canonical_arch=$1
     
@@ -45,9 +54,10 @@ get_display_arch_name() {
         mips32v2be)  echo "mips32" ;;
         mips32v2le)  echo "mips32el" ;;
         arm32v5le)   echo "armv5" ;;
-        ppc32be)     echo "ppc32" ;;
+        ppc32be)     echo "ppc32/powerpc" ;;  # Show both common names
         or1k)        echo "openrisc" ;;
         aarch64_be)  echo "aarch64be" ;;
+        microblaze)  echo "microblazebe" ;;   # glibc uses be suffix
         *)           echo "$canonical_arch" ;;
     esac
 }

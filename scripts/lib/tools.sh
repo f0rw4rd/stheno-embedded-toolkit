@@ -18,11 +18,11 @@ declare -A TOOL_SCRIPTS=(
     ["ncat"]="$SCRIPT_DIR/../tools/build-ncat.sh"
     ["ncat-ssl"]="$SCRIPT_DIR/../tools/build-ncat-ssl.sh"
     ["gdbserver"]="$SCRIPT_DIR/../tools/build-gdbserver.sh"
-    ["gdb"]="$SCRIPT_DIR/../tools/build-gdb.sh"
     ["nmap"]="$SCRIPT_DIR/../tools/build-nmap.sh"
     ["dropbear"]="$SCRIPT_DIR/../tools/build-dropbear.sh"
     ["ltrace"]="$SCRIPT_DIR/../tools/build-ltrace.sh"
     ["ply"]="$SCRIPT_DIR/../tools/build-ply.sh"
+    ["can-utils"]="$SCRIPT_DIR/../tools/build-can-utils.sh"
 )
 
 build_tool() {

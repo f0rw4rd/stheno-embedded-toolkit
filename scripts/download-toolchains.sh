@@ -9,6 +9,26 @@ TOOLCHAIN_DIR="/build/toolchains"
 mkdir -p "$TOOLCHAIN_DIR"
 cd "$TOOLCHAIN_DIR"
 
+verify_toolchain() {
+    local target_dir=$1
+    local min_headers=1000
+    
+    # Check if directory exists
+    if [ ! -d "$target_dir" ]; then
+        return 1
+    fi
+    
+    # Count header files
+    local header_count=$(find "$target_dir" -name "*.h" 2>/dev/null | wc -l)
+    
+    if [ $header_count -lt $min_headers ]; then
+        echo "  Warning: Only $header_count headers found (expected >$min_headers)"
+        return 1
+    fi
+    
+    return 0
+}
+
 download_toolchain() {
     local url=$1
     local target_dir=$2
@@ -18,6 +38,18 @@ download_toolchain() {
     local download_success=false
     
     echo "Downloading $target_dir..."
+    
+    # Remove existing directory if corrupted
+    if [ -d "$target_dir" ] && ! verify_toolchain "$target_dir"; then
+        echo "  Removing corrupted toolchain..."
+        rm -rf "$target_dir"
+    fi
+    
+    # Skip if already exists and valid
+    if [ -d "$target_dir" ] && verify_toolchain "$target_dir"; then
+        echo "✓ $target_dir (already exists and valid)"
+        return 0
+    fi
     
     while [ $retry_count -lt $max_retries ]; do
         if wget -q --tries=2 --timeout=30 "$url" -O "$filename"; then
@@ -44,7 +76,15 @@ download_toolchain() {
             mv "$extracted_dir" "$target_dir"
         fi
         rm -f "$filename"
-        echo "✓ $target_dir"
+        
+        # Verify the extracted toolchain
+        if verify_toolchain "$target_dir"; then
+            echo "✓ $target_dir"
+        else
+            log_error "✗ $target_dir extracted but appears corrupted"
+            rm -rf "$target_dir"
+            return 1
+        fi
     else
         log_error "✗ Failed to extract $target_dir"
         rm -f "$filename"
@@ -52,6 +92,7 @@ download_toolchain() {
     fi
 }
 
+export -f verify_toolchain
 export -f download_toolchain
 export -f log_error
 
@@ -197,3 +238,29 @@ fi
 
 echo
 echo "All toolchains downloaded successfully"
+
+# Final verification
+echo
+echo "Verifying all toolchains..."
+VERIFICATION_FAILED=0
+for line in "${TOOLCHAINS[@]}"; do
+    target_dir=$(echo "$line" | cut -d' ' -f2)
+    if [ -d "$target_dir" ]; then
+        if ! verify_toolchain "$target_dir" >/dev/null 2>&1; then
+            header_count=$(find "$target_dir" -name "*.h" 2>/dev/null | wc -l)
+            log_error "✗ $target_dir appears corrupted ($header_count headers)"
+            VERIFICATION_FAILED=$((VERIFICATION_FAILED + 1))
+        fi
+    else
+        log_error "✗ $target_dir is missing"
+        VERIFICATION_FAILED=$((VERIFICATION_FAILED + 1))
+    fi
+done
+
+if [ "$VERIFICATION_FAILED" -gt 0 ]; then
+    echo
+    log_error "$VERIFICATION_FAILED toolchain(s) failed verification"
+    exit 1
+else
+    echo "✓ All toolchains verified successfully"
+fi
