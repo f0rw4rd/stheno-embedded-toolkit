@@ -14,7 +14,7 @@ download_toolchain() {
     log_error "Toolchain not found for $arch"
     echo "Expected toolchain directory: $toolchain_dir"
     echo "Toolchains should be pre-downloaded during Docker image build"
-    echo "Please rebuild the Docker image with: docker build -t stheno-toolkit ."
+    echo "Please rebuild the Docker image with: docker build -t sthenos-toolkit ."
     return 1
 }
 

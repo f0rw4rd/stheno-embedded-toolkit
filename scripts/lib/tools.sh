@@ -23,6 +23,7 @@ declare -A TOOL_SCRIPTS=(
     ["ltrace"]="$SCRIPT_DIR/../tools/build-ltrace.sh"
     ["ply"]="$SCRIPT_DIR/../tools/build-ply.sh"
     ["can-utils"]="$SCRIPT_DIR/../tools/build-can-utils.sh"
+    ["shell-static"]="$SCRIPT_DIR/../tools/build-shell-static.sh"
 )
 
 build_tool() {

@@ -44,7 +44,7 @@ jobs:
               echo "Creating tools zip for $arch_name..."
               # Check if the directory has any files
               if [ "$(ls -A "$arch")" ]; then
-                zip -r "../stheno-toolkit-${arch_name}.zip" "$arch_name"
+                zip -r "../sthenos-toolkit-${arch_name}.zip" "$arch_name"
               else
                 echo "Skipping empty directory: $arch_name"
               fi
@@ -52,7 +52,7 @@ jobs:
           done
           cd ..
           echo "Created the following tool zip files:"
-          ls -la stheno-toolkit-*.zip 2>/dev/null || echo "No tool zip files created!"
+          ls -la sthenos-toolkit-*.zip 2>/dev/null || echo "No tool zip files created!"
 
       - name: Create preload library zip files
         run: |
@@ -60,18 +60,18 @@ jobs:
             cd output-preload
             # Create combined zip with both glibc and musl
             echo "Creating combined preload libraries zip..."
-            zip -r "../stheno-preload-libraries-all.zip" .
+            zip -r "../sthenos-preload-libraries-all.zip" .
             
             # Create libc-specific zips
             for libc in glibc musl; do
               if [ -d "$libc" ]; then
                 echo "Creating $libc preload libraries zip..."
-                zip -r "../stheno-preload-libraries-${libc}.zip" "$libc"
+                zip -r "../sthenos-preload-libraries-${libc}.zip" "$libc"
               fi
             done
             cd ..
             echo "Created the following preload library zip files:"
-            ls -la stheno-preload-libraries-*.zip 2>/dev/null || echo "No preload library zip files created!"
+            ls -la sthenos-preload-libraries-*.zip 2>/dev/null || echo "No preload library zip files created!"
           else
             echo "No preload libraries found to package"
           fi
@@ -81,7 +81,7 @@ jobs:
         run: |
           TAG="${{ steps.get_tag.outputs.tag }}"
           
-          echo "## Stheno Embedded Toolkit Release $TAG" > release_notes.md
+          echo "## Sthenos Embedded Toolkit Release $TAG" > release_notes.md
           echo "" >> release_notes.md
           
           # Get the previous tag for comparison
@@ -112,9 +112,9 @@ jobs:
           echo "Download the toolkit zip file for your target architecture. All binaries are statically linked with musl libc." >> release_notes.md
           echo "" >> release_notes.md
           echo "#### Preload Libraries" >> release_notes.md
-          echo "- \`stheno-preload-libraries-all.zip\` - All preload libraries (glibc and musl)" >> release_notes.md
-          echo "- \`stheno-preload-libraries-glibc.zip\` - glibc-only preload libraries" >> release_notes.md
-          echo "- \`stheno-preload-libraries-musl.zip\` - musl-only preload libraries" >> release_notes.md
+          echo "- \`sthenos-preload-libraries-all.zip\` - All preload libraries (glibc and musl)" >> release_notes.md
+          echo "- \`sthenos-preload-libraries-glibc.zip\` - glibc-only preload libraries" >> release_notes.md
+          echo "- \`sthenos-preload-libraries-musl.zip\` - musl-only preload libraries" >> release_notes.md
           echo "" >> release_notes.md
           echo "Preload libraries include: shell-env, shell-helper, shell-bind, shell-reverse, shell-fifo, and libdesock" >> release_notes.md
           echo "" >> release_notes.md
@@ -126,12 +126,12 @@ jobs:
         run: |
           # Create the release using gh CLI
           gh release create ${{ steps.get_tag.outputs.tag }} \
-            --title "Stheno Embedded Toolkit ${{ steps.get_tag.outputs.tag }}" \
+            --title "Sthenos Embedded Toolkit ${{ steps.get_tag.outputs.tag }}" \
             --notes-file release_notes.md \
             --repo ${{ github.repository }}
           
           # Upload all toolkit zip files
-          for zip in stheno-toolkit-*.zip; do
+          for zip in sthenos-toolkit-*.zip; do
             if [ -f "$zip" ]; then
               echo "Uploading $zip..."
               gh release upload ${{ steps.get_tag.outputs.tag }} "$zip" \
@@ -141,7 +141,7 @@ jobs:
           done
           
           # Upload all preload library zip files
-          for zip in stheno-preload-libraries-*.zip; do
+          for zip in sthenos-preload-libraries-*.zip; do
             if [ -f "$zip" ]; then
               echo "Uploading $zip..."
               gh release upload ${{ steps.get_tag.outputs.tag }} "$zip" \
@@ -152,7 +152,7 @@ jobs:
 
       - name: Generate SHA256 checksums
         run: |
-          sha256sum stheno-toolkit-*.zip stheno-preload-libraries-*.zip > checksums.sha256 2>/dev/null || true
+          sha256sum sthenos-toolkit-*.zip sthenos-preload-libraries-*.zip > checksums.sha256 2>/dev/null || true
           if [ -f checksums.sha256 ] && [ -s checksums.sha256 ]; then
             gh release upload ${{ steps.get_tag.outputs.tag }} checksums.sha256 \
               --clobber \

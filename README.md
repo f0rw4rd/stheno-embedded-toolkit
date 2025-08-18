@@ -1,12 +1,12 @@
-# Stheno Embedded Toolkit
+# Sthenos Embedded Toolkit
 
 Fast, reliable pipeline for building static debugging tools for embedded systems.
 
 ## About
 
-This project is inspired by [CyberDanube's medusa-embedded-toolkit](https://github.com/CyberDanube/medusa-embedded-toolkit), which provides pre-compiled static binaries for embedded systems. While they focus on publishing the binaries, Stheno provides the complete build toolchain to create these binaries from source.
+This project is inspired by [CyberDanube's medusa-embedded-toolkit](https://github.com/CyberDanube/medusa-embedded-toolkit), which provides pre-compiled static binaries for embedded systems. While they focus on publishing the binaries, Sthenos provides the complete build toolchain to create these binaries from source.
 
-The name "Stheno" is a playful reference - in Greek mythology, Stheno was one of Medusa's sisters, both being Gorgons. This reflects our relationship: same family of tools, different approach.
+The name "Sthenos" is a playful reference - in Greek mythology, Sthenos was one of Medusa's sisters, both being Gorgons. This reflects our relationship: same family of tools, different approach.
 
 ## Quick Start
 
@@ -131,6 +131,7 @@ arch=$(uname -m);libc=$(ldd --version 2>&1|grep -qi musl&&echo musl||echo glibc)
 - **ply** - BPF-based dynamic tracer (eBPF/kprobes)
 - **dropbear** - Lightweight SSH server/client (includes dbclient, scp, dropbearkey)
 - **can-utils** - CAN bus utilities (20 tools including candump, cansend, canplayer, etc.)
+- **shell-static** - Static executable versions of shell utilities (shell-bind, shell-env, etc.)
 
 ### Glibc Static Tools (new)
 - **ltrace** - Library call tracer (traces dynamic library calls and signals)

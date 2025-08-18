@@ -1,5 +1,5 @@
 #!/bin/bash
-# Main build script for Stheno Embedded Toolkit (Alpine version)
+# Main build script for Sthenos Embedded Toolkit (Alpine version)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -66,6 +66,7 @@ for arg in "$@"; do
             echo "  ltrace      Library call tracer (glibc-based)"
             echo "  ply         Dynamic tracer using BPF (limited arch support, LE only)"
             echo "  can-utils   CAN bus utilities (candump, cansend, etc.)"
+            echo "  shell-static Shell utilities as static executables (output/<arch>/shell/)"
             echo ""
             echo "OPTIONS:"
             echo "  --arch ARCH      Build for specific architecture only"
@@ -95,7 +96,7 @@ for arg in "$@"; do
             echo "  $0 strace --arch x86_64  # Build strace for x86_64 only"
             exit 0
             ;;
-        strace|busybox|busybox_nodrop|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|nmap|dropbear|ltrace|ply|can-utils)
+        strace|busybox|busybox_nodrop|bash|socat|socat-ssl|ncat|ncat-ssl|tcpdump|gdbserver|nmap|dropbear|ltrace|ply|can-utils|shell-static)
             TOOLS="$arg"
             ;;
         arm32v5le|arm32v5lehf|arm32v7le|arm32v7lehf|armeb|armv6|armv7m|armv7r|\
@@ -182,7 +183,7 @@ fi
 if [ "$INTERACTIVE" = true ]; then
     echo "Starting interactive shell in build container..."
     echo "=============================================="
-    echo "You are now in the Stheno build environment"
+    echo "You are now in the Sthenos build environment"
     echo "Build directory: /build"
     echo "Sources cache: /build/sources"
     echo "Toolchains cache: /build/toolchains"

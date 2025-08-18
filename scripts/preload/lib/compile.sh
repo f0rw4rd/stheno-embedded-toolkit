@@ -103,11 +103,12 @@ build_preload_library() {
             return 1
         }
         
-        # Strip symbols
+        # Strip symbols from shared library
         echo
         $strip_cmd "${lib}.so" 2>&1 || {
             echo "Warning: Strip failed (non-fatal)"
         }
+        
         
         # Show library info
         echo
@@ -134,6 +135,7 @@ build_preload_library() {
         rm -rf "$build_dir"
         return 1
     }
+    
     
     # Create usage documentation
     create_usage_doc "$lib" "$arch" "$output_dir"
